@@ -1,0 +1,116 @@
+Sistema:
+    Inventario
+    Ventas
+    Recibos
+    Alertas
+    Reportes
+    **Facturacion,Usuario(a futuro)
+
+Inventario:
+    Datos del producto
+    Cada producto tendrá:
+    Código (manual o escaneable)
+    Nombre
+    Stock actual
+    Stock mínimo (default = 5 si no se ingresa)
+    Ventas sin stock (campo clave)
+    4 precios (precio1, precio2, precio3, precio4)
+    Estado (activo / descontinuado)
+    Fecha de creación
+
+    Movimientos de inventario
+    Ingreso
+    Cantidad
+    Motivo (compra, ajuste, devolución)
+    Fecha
+    Usuario (futuro)
+    Salida
+    Venta
+    Devolución
+    Ajuste
+    Todo queda registrado (historial).
+
+    Alertas
+    Productos con stock ≤ stock mínimo
+    Productos con ventas sin stock pendientes
+    Vista especial: “Productos por reponer”
+
+Venta
+    Cada venta tiene:
+    ID único
+    Fecha y hora
+    Productos (cantidad + precio usado)
+    Total
+
+    Tipo de venta:
+    NORMAL
+    SIN_STOCK
+
+    Método de pago:
+    Efectivo
+    QR (preparado)
+
+    Estado:
+    Completa
+    Parcial (por devolución)
+    Anulada
+
+    Devoluciones
+    Se puede modificar una venta
+    Devolver uno o varios productos
+    El sistema ajusta:
+    Stock
+    Reportes
+    Totales
+
+RECIBOS
+    Recibo físico (impresora térmica)
+
+    Plantilla preimpresa:
+    Logo
+    Nombre del negocio
+
+    El sistema imprime solo:
+    Fecha
+    Productos
+    Totales
+    Código QR de la venta
+    Recibo electrónico (futuro)
+
+USUARIOS (CONTEMPLADO, NO IMPLEMENTADO AÚN)
+    Admin
+    Vendedor (futuro)
+    El código se prepara desde el inicio para esto.
+
+ARQUITECTURA DEFINIDA
+    Backend
+        FastAPI
+        API REST (simple y rápida)
+        Lógica de negocio centralizada
+    
+    Base de datos
+        PostgreSQL
+        Instalado en la PC del negocio
+        Backups automáticos
+
+    Frontend web
+        Vue 3 + Pinia
+        UI simple, botones grandes, pocos pasos
+
+    Móvil
+        Flutter
+        Escaneo de códigos
+        Ventas rápidas
+
+    Escritorio
+        Tauri
+        Rápido, liviano
+    Acceso directo a impresora
+
+    Conectividad
+    Tailscale
+    Acceso seguro desde fuera
+    Sin pagar nube
+
+
+
