@@ -1,15 +1,13 @@
-from typing import Union
-
 from fastapi import FastAPI
+from database import Base, engine
 
-app = FastAPI()
+from routers import productos, ventas, alertas, reportes
 
+Base.metadata.create_all(bind=engine)
 
-@app.get("/")
-def read_root():
-    return {"Hello": "World"}
+app = FastAPI(title="Sistema de Inventario y Ventas")
 
-
-@app.get("/items/{item_id}")
-def read_item(item_id: int, q: Union[str, None] = None):
-    return {"item_id": item_id, "q": q}
+app.include_router(productos.router, prefix="/productos", tags=["Productos"])
+app.include_router(ventas.router, prefix="/ventas", tags=["Ventas"])
+app.include_router(alertas.router, prefix="/alertas", tags=["Alertas"])
+app.include_router(reportes.router, prefix="/reportes", tags=["Reportes"])

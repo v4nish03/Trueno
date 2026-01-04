@@ -1,5 +1,4 @@
 # services/inventario_service.py
-
 from sqlalchemy.orm import Session
 from models.producto import Producto
 from models.movimiento import MovimientoInventario, TipoMovimientoEnum, MotivoMovimientoEnum
@@ -7,39 +6,81 @@ from models.movimiento import MovimientoInventario, TipoMovimientoEnum, MotivoMo
 
 def registrar_movimiento(
     db: Session,
-    producto: Producto,
-    cantidad: int,
+    *,
+    producto_id: int,
     tipo: TipoMovimientoEnum,
     motivo: MotivoMovimientoEnum,
+    cantidad: int,
     referencia_id: int | None = None
 ):
-    """
-    Registra un movimiento y actualiza el stock cacheado.
-    """
-
     movimiento = MovimientoInventario(
-        producto_id=producto.id,
+        producto_id=producto_id,
         tipo=tipo,
         motivo=motivo,
         cantidad=cantidad,
         referencia_id=referencia_id
     )
-
     db.add(movimiento)
 
-    # ACTUALIZACIÓN DE STOCK
-    if tipo == TipoMovimientoEnum.ingreso:
-        producto.stock += cantidad
 
-    elif tipo == TipoMovimientoEnum.salida:
-        if producto.stock >= cantidad:
-            producto.stock -= cantidad
-        else:
-            # venta sin stock
-            producto.ventas_sin_stock += 1
-            producto.stock = producto.stock - cantidad  # queda negativo (deuda)
+def ingreso_stock(
+    db: Session,
+    *,
+    producto: Producto,
+    cantidad: int,
+    motivo: MotivoMovimientoEnum,
+    referencia_id: int | None = None
+):
+    producto.stock += cantidad
 
-    elif tipo == TipoMovimientoEnum.ajuste:
-        producto.stock = cantidad  # ajuste manual controlado
+    registrar_movimiento(
+        db,
+        producto_id=producto.id,
+        tipo=TipoMovimientoEnum.ingreso,
+        motivo=motivo,
+        cantidad=cantidad,
+        referencia_id=referencia_id
+    )
 
-    db.add(producto)
+
+def salida_stock(
+    db: Session,
+    *,
+    producto: Producto,
+    cantidad: int,
+    referencia_id: int | None = None
+):
+    if producto.stock >= cantidad:
+        producto.stock -= cantidad
+
+        registrar_movimiento(
+            db,
+            producto_id=producto.id,
+            tipo=TipoMovimientoEnum.salida,
+            motivo=MotivoMovimientoEnum.venta,
+            cantidad=cantidad,
+            referencia_id=referencia_id
+        )
+        return True
+
+    # No hay stock → venta sin stock
+    producto.ventas_sin_stock += cantidad
+    return False
+
+
+def ajuste_stock(
+    db: Session,
+    *,
+    producto: Producto,
+    cantidad: int,
+    motivo: MotivoMovimientoEnum = MotivoMovimientoEnum.correccion
+):
+    producto.stock = cantidad
+
+    registrar_movimiento(
+        db,
+        producto_id=producto.id,
+        tipo=TipoMovimientoEnum.ajuste,
+        motivo=motivo,
+        cantidad=cantidad
+    )
