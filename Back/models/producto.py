@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.sql import func
 import enum
-
+from sqlalchemy.orm import relationship
 from database import Base
 
 
@@ -39,6 +39,7 @@ class Producto(Base):
     
     ventas_sin_stock = Column(Integer, nullable=False, default=0)
 
+    movimientos = relationship("MovimientoInventario", backref="producto")
 
     ubicacion = Column(
         Enum(UbicacionProducto),

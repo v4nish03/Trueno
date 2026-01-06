@@ -1,98 +1,82 @@
-# services/reportes_service.py
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from datetime import date
 
-from models.venta import Venta, EstadoVentaEnum
+from models.venta import Venta, MetodoPagoEnum
 from models.venta_producto import VentaProducto
-from models.movimiento import MovimientoInventario, MotivoMovimientoEnum
 from models.producto import Producto
 
 
-def reporte_ventas_diarias(db: Session, fecha: date):
-    """
-    Reporte de ventas de un día
-    """
-    ventas = (
-        db.query(Venta)
-        .filter(func.date(Venta.fecha) == fecha)
-        .filter(Venta.estado != EstadoVentaEnum.anulada)
-        .all()
-    )
+# 📅 Reporte diario
+def reporte_diario(db: Session, fecha: date):
+    ventas = db.query(Venta).filter(
+        func.date(Venta.fecha) == fecha
+    ).all()
 
     total_ventas = sum(v.total for v in ventas)
-    cantidad_ventas = len(ventas)
 
     return {
-        "fecha": str(fecha),
-        "cantidad_ventas": cantidad_ventas,
-        "total_vendido": total_ventas,
+        "fecha": fecha,
+        "cantidad_ventas": len(ventas),
+        "total_vendido": total_ventas
     }
 
 
-def reporte_productos_mas_vendidos(db: Session, fecha_inicio: date, fecha_fin: date):
-    """
-    Productos más vendidos en un rango
-    """
+# 📆 Reporte mensual
+def reporte_mensual(db: Session, year: int, month: int):
+    ventas = db.query(Venta).filter(
+        func.extract("year", Venta.fecha) == year,
+        func.extract("month", Venta.fecha) == month
+    ).all()
+
+    total_ventas = sum(v.total for v in ventas)
+
+    return {
+        "year": year,
+        "month": month,
+        "cantidad_ventas": len(ventas),
+        "total_vendido": total_ventas
+    }
+
+
+# 📦 Reporte por producto
+def reporte_por_producto(db: Session):
     resultados = (
         db.query(
             Producto.nombre,
-            func.sum(VentaProducto.cantidad).label("total_vendido")
+            func.sum(VentaProducto.cantidad).label("cantidad_vendida"),
+            func.sum(VentaProducto.cantidad * VentaProducto.precio_unitario).label("total")
         )
         .join(VentaProducto, Producto.id == VentaProducto.producto_id)
-        .join(Venta, Venta.id == VentaProducto.venta_id)
-        .filter(func.date(Venta.fecha).between(fecha_inicio, fecha_fin))
-        .filter(Venta.estado != EstadoVentaEnum.anulada)
         .group_by(Producto.nombre)
-        .order_by(func.sum(VentaProducto.cantidad).desc())
         .all()
     )
 
     return [
-        {"producto": r.nombre, "cantidad": r.total_vendido}
+        {
+            "producto": r[0],
+            "cantidad_vendida": r[1],
+            "total_vendido": r[2]
+        }
         for r in resultados
     ]
 
 
-def reporte_ingresos_inventario(db: Session, fecha_inicio: date, fecha_fin: date):
-    """
-    Ingresos por compra o devolución
-    """
-    movimientos = (
-        db.query(MovimientoInventario)
-        .filter(MovimientoInventario.motivo.in_([
-            MotivoMovimientoEnum.compra,
-            MotivoMovimientoEnum.devolucion
-        ]))
-        .filter(func.date(MovimientoInventario.fecha).between(fecha_inicio, fecha_fin))
+# 💰 Reporte por método de pago
+def reporte_por_metodo_pago(db: Session):
+    resultados = (
+        db.query(
+            Venta.metodo_pago,
+            func.sum(Venta.total).label("total")
+        )
+        .group_by(Venta.metodo_pago)
         .all()
     )
 
     return [
         {
-            "producto_id": m.producto_id,
-            "cantidad": m.cantidad,
-            "motivo": m.motivo.value,
-            "fecha": m.fecha
+            "metodo_pago": r[0].value,
+            "total": r[1]
         }
-        for m in movimientos
-    ]
-
-
-def reporte_ventas_sin_stock(db: Session):
-    """
-    Productos con ventas sin stock
-    """
-    productos = (
-        db.query(Producto)
-        .filter(Producto.ventas_sin_stock > 0)
-        .all()
-    )
-
-    return [
-        {
-            "producto": p.nombre,
-            "ventas_sin_stock": p.ventas_sin_stock
-        }
-        for p in productos
+        for r in resultados
     ]
