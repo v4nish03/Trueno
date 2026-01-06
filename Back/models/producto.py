@@ -39,7 +39,6 @@ class Producto(Base):
     
     ventas_sin_stock = Column(Integer, nullable=False, default=0)
 
-    movimientos = relationship("MovimientoInventario", backref="producto")
     movimientos = relationship("MovimientoInventario", back_populates="producto")
 
     ubicacion = Column(
@@ -48,7 +47,7 @@ class Producto(Base):
         default=UbicacionProducto.TIENDA
     )
 
-
+    activo = Column(Boolean, nullable=False, default=True)
 
     fecha_creacion = Column(DateTime(timezone=True), server_default=func.now())
     fecha_edicion = Column(
@@ -56,4 +55,3 @@ class Producto(Base):
         server_default=func.now(),
         onupdate=func.now()
     )
-

@@ -1,5 +1,7 @@
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import func, and_
+from datetime import date
 
 from models.producto import Producto
 from models.venta import Venta, TipoVentaEnum, MetodoPagoEnum, EstadoVentaEnum
@@ -17,20 +19,13 @@ def crear_venta(
     metodo_pago: MetodoPagoEnum
 ):
     """
-    productos = [
-        {
-            "producto_id": int,
-            "cantidad": int,
-            "precio_unitario": float
-        }
-    ]
+    LEGACY - Crear venta completa de una vez
+    items = [{"producto_id": int, "cantidad": int, "precio_unitario": float}]
     """
-
     try:
         total = 0
         venta_sin_stock = False
 
-        # 1️⃣ Crear venta temporal
         venta = Venta(
             total=0,
             tipo=TipoVentaEnum.normal,
@@ -38,21 +33,19 @@ def crear_venta(
             estado=EstadoVentaEnum.completa
         )
         db.add(venta)
-        db.flush()  # obtenemos venta.id
+        db.flush()
 
-        # 2️⃣ Procesar productos
         for item in items:
             producto = db.query(Producto).filter(
                 Producto.id == item["producto_id"]
             ).first()
 
             if not producto:
-                raise Exception("Producto no encontrado")
+                raise Exception(f"Producto {item['producto_id']} no encontrado")
 
             cantidad = item["cantidad"]
             precio = item["precio_unitario"]
 
-            # 3️⃣ Registrar producto en la venta
             vp = VentaProducto(
                 venta_id=venta.id,
                 producto_id=producto.id,
@@ -61,7 +54,6 @@ def crear_venta(
             )
             db.add(vp)
 
-            # 4️⃣ Movimiento de inventario
             movimiento = MovimientoInventario(
                 producto_id=producto.id,
                 tipo=TipoMovimientoEnum.salida,
@@ -71,7 +63,6 @@ def crear_venta(
             )
             db.add(movimiento)
 
-            # 5️⃣ Stock o venta sin stock
             if producto.stock >= cantidad:
                 producto.stock -= cantidad
             else:
@@ -80,26 +71,27 @@ def crear_venta(
 
             total += cantidad * precio
 
-        # 6️⃣ Finalizar venta
         venta.total = total
         if venta_sin_stock:
             venta.tipo = TipoVentaEnum.sin_stock
 
         db.commit()
+        db.refresh(venta)
         return venta
 
     except SQLAlchemyError as e:
         db.rollback()
         raise e
 
-# services/venta_service.py
 
 def crear_venta_abierta(db: Session):
     """Crea una venta vacía en estado 'abierta'"""
     venta = Venta(estado=EstadoVentaEnum.abierta)
     db.add(venta)
     db.commit()
+    db.refresh(venta)
     return venta
+
 
 def agregar_producto_a_venta(
     db: Session,
@@ -111,12 +103,34 @@ def agregar_producto_a_venta(
     """Agrega productos a una venta abierta"""
     venta = db.query(Venta).filter(Venta.id == venta_id).first()
     
+    if not venta:
+        raise Exception("Venta no encontrada")
+    
     if venta.estado != EstadoVentaEnum.abierta:
         raise Exception("Solo se pueden agregar productos a ventas abiertas")
     
     producto = db.query(Producto).filter(Producto.id == producto_id).first()
     
-    # Registrar en venta_productos
+    if not producto:
+        raise Exception("Producto no encontrado")
+    
+    if not producto.activo:
+        raise Exception("El producto está descontinuado")
+    
+    # Verificar si el producto ya está en la venta
+    vp_existente = db.query(VentaProducto).filter(
+        VentaProducto.venta_id == venta_id,
+        VentaProducto.producto_id == producto_id
+    ).first()
+    
+    if vp_existente:
+        # Si ya existe, sumar cantidad
+        vp_existente.cantidad += cantidad
+        db.commit()
+        db.refresh(vp_existente)
+        return vp_existente
+    
+    # Si no existe, crear nuevo
     vp = VentaProducto(
         venta_id=venta.id,
         producto_id=producto.id,
@@ -124,12 +138,11 @@ def agregar_producto_a_venta(
         precio_unitario=precio_unitario
     )
     db.add(vp)
-    
-    # Generar movimiento pero NO descontar stock todavía
-    # (solo se descuenta al cerrar)
-    
     db.commit()
+    db.refresh(vp)
+    
     return vp
+
 
 def cerrar_venta(
     db: Session,
@@ -139,12 +152,18 @@ def cerrar_venta(
     """Cierra la venta, calcula total, descuenta stock"""
     venta = db.query(Venta).filter(Venta.id == venta_id).first()
     
+    if not venta:
+        raise Exception("Venta no encontrada")
+    
     if venta.estado != EstadoVentaEnum.abierta:
         raise Exception("La venta ya está cerrada")
     
     productos_venta = db.query(VentaProducto).filter(
         VentaProducto.venta_id == venta_id
     ).all()
+    
+    if not productos_venta:
+        raise Exception("No se puede cerrar una venta sin productos")
     
     total = 0
     venta_sin_stock = False
@@ -178,10 +197,146 @@ def cerrar_venta(
     venta.estado = EstadoVentaEnum.completa
     
     db.commit()
+    db.refresh(venta)
     
     # Enviar alertas si hay ventas sin stock
     if venta_sin_stock:
-        from services.alertas_service import enviar_alertas
-        enviar_alertas(db)
+        try:
+            from services.alertas_service import enviar_alertas
+            enviar_alertas(db)
+        except Exception as e:
+            print(f"Error enviando alertas: {e}")
     
     return venta
+
+
+def obtener_venta(db: Session, venta_id: int):
+    """Obtener detalles completos de una venta"""
+    venta = db.query(Venta).filter(Venta.id == venta_id).first()
+    if not venta:
+        raise Exception("Venta no encontrada")
+    
+    productos_venta = db.query(VentaProducto).filter(
+        VentaProducto.venta_id == venta_id
+    ).all()
+    
+    items = []
+    for vp in productos_venta:
+        producto = db.query(Producto).filter(Producto.id == vp.producto_id).first()
+        items.append({
+            "producto_id": producto.id,
+            "codigo": producto.codigo,
+            "nombre": producto.nombre,
+            "cantidad": vp.cantidad,
+            "precio_unitario": vp.precio_unitario,
+            "subtotal": vp.cantidad * vp.precio_unitario
+        })
+    
+    return {
+        "id": venta.id,
+        "fecha": venta.fecha,
+        "total": venta.total,
+        "tipo": venta.tipo.value if venta.tipo else None,
+        "metodo_pago": venta.metodo_pago.value if venta.metodo_pago else None,
+        "estado": venta.estado.value,
+        "items": items
+    }
+
+
+def listar_ventas(
+    db: Session,
+    skip: int = 0,
+    limit: int = 50,
+    fecha_desde: date = None,
+    fecha_hasta: date = None
+):
+    """Listar ventas con filtros"""
+    query = db.query(Venta)
+    
+    if fecha_desde:
+        query = query.filter(func.date(Venta.fecha) >= fecha_desde)
+    
+    if fecha_hasta:
+        query = query.filter(func.date(Venta.fecha) <= fecha_hasta)
+    
+    ventas = query.order_by(Venta.fecha.desc()).offset(skip).limit(limit).all()
+    
+    return [
+        {
+            "id": v.id,
+            "fecha": v.fecha,
+            "total": v.total,
+            "tipo": v.tipo.value if v.tipo else None,
+            "metodo_pago": v.metodo_pago.value if v.metodo_pago else None,
+            "estado": v.estado.value
+        }
+        for v in ventas
+    ]
+
+
+def eliminar_producto_venta(db: Session, venta_id: int, producto_id: int):
+    """Eliminar un producto de una venta abierta"""
+    venta = db.query(Venta).filter(Venta.id == venta_id).first()
+    
+    if not venta:
+        raise Exception("Venta no encontrada")
+    
+    if venta.estado != EstadoVentaEnum.abierta:
+        raise Exception("Solo se pueden eliminar productos de ventas abiertas")
+    
+    vp = db.query(VentaProducto).filter(
+        VentaProducto.venta_id == venta_id,
+        VentaProducto.producto_id == producto_id
+    ).first()
+    
+    if not vp:
+        raise Exception("Producto no encontrado en la venta")
+    
+    db.delete(vp)
+    db.commit()
+    return {"mensaje": "Producto eliminado de la venta"}
+
+
+def anular_venta(db: Session, venta_id: int):
+    """Anular una venta completa"""
+    venta = db.query(Venta).filter(Venta.id == venta_id).first()
+    
+    if not venta:
+        raise Exception("Venta no encontrada")
+    
+    if venta.estado == EstadoVentaEnum.anulada:
+        raise Exception("La venta ya está anulada")
+    
+    # Devolver stock si la venta estaba completa
+    if venta.estado == EstadoVentaEnum.completa:
+        productos_venta = db.query(VentaProducto).filter(
+            VentaProducto.venta_id == venta_id
+        ).all()
+        
+        for vp in productos_venta:
+            producto = db.query(Producto).filter(Producto.id == vp.producto_id).first()
+            producto.stock += vp.cantidad
+            
+            # Si había ventas sin stock, reducir el contador
+            if venta.tipo == TipoVentaEnum.sin_stock and producto.ventas_sin_stock > 0:
+                producto.ventas_sin_stock -= 1
+            
+            # Registrar movimiento de devolución
+            movimiento = MovimientoInventario(
+                producto_id=producto.id,
+                tipo=TipoMovimientoEnum.ingreso,
+                motivo=MotivoMovimientoEnum.devolucion,
+                cantidad=vp.cantidad,
+                referencia_id=venta.id
+            )
+            db.add(movimiento)
+    
+    venta.estado = EstadoVentaEnum.anulada
+    db.commit()
+    db.refresh(venta)
+    
+    return {
+        "mensaje": "Venta anulada correctamente",
+        "venta_id": venta.id,
+        "total_devuelto": venta.total
+    }

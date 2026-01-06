@@ -1,5 +1,5 @@
 # models/movimiento.py
-from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime
+from sqlalchemy import Column, Integer, Enum, ForeignKey, DateTime
 from sqlalchemy.sql import func
 from database import Base
 import enum
