@@ -1,7 +1,7 @@
 # models/recibo.py
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from sqlalchemy.sql import func
-from core.database import Base
+from database import Base
 
 class Recibo(Base):
     __tablename__ = "recibos"

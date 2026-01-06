@@ -40,6 +40,7 @@ class Producto(Base):
     ventas_sin_stock = Column(Integer, nullable=False, default=0)
 
     movimientos = relationship("MovimientoInventario", backref="producto")
+    movimientos = relationship("MovimientoInventario", back_populates="producto")
 
     ubicacion = Column(
         Enum(UbicacionProducto),

@@ -19,6 +19,7 @@ Jinja2==3.1.6
 markdown-it-py==4.0.0
 MarkupSafe==3.0.3
 mdurl==0.1.2
+psycopg2-binary==2.9.11
 pydantic==2.12.5
 pydantic-extra-types==2.11.0
 pydantic-settings==2.12.0
@@ -33,6 +34,7 @@ rignore==0.7.6
 sentry-sdk==2.48.0
 shellingham==1.5.4
 SQLAlchemy==2.0.45
+sqlmodel==0.0.31
 starlette==0.50.0
 typer==0.21.0
 typing-inspection==0.4.2

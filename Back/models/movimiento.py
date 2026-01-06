@@ -1,8 +1,9 @@
 # models/movimiento.py
 from sqlalchemy import Column, Integer, String, Enum, ForeignKey, DateTime
 from sqlalchemy.sql import func
-from core.database import Base
+from database import Base
 import enum
+from sqlalchemy.orm import relationship
 
 class TipoMovimientoEnum(enum.Enum):
     ingreso = "ingreso"
@@ -22,6 +23,7 @@ class MovimientoInventario(Base):
     id = Column(Integer, primary_key=True, index=True)
 
     producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    producto = relationship("Producto", back_populates="movimientos")
 
     tipo = Column(Enum(TipoMovimientoEnum), nullable=False)
     motivo = Column(Enum(MotivoMovimientoEnum), nullable=False)

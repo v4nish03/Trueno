@@ -1,6 +1,6 @@
 # models/venta_producto.py
 from sqlalchemy import Column, Integer, Float, ForeignKey
-from core.database import Base
+from database import Base
 
 class VentaProducto(Base):
     __tablename__ = "venta_productos"
