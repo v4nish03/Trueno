@@ -18,18 +18,45 @@ from datetime import date
 router = APIRouter()
 
 
+# ⚠️ IMPORTANTE: rutas estáticas SIEMPRE antes que /{venta_id}
+# De lo contrario FastAPI confunde "abrir", "listar", etc. con un ID numérico
+
+@router.get("/")
+def listar(
+    skip: int = Query(0, ge=0),
+    limit: int = Query(50, ge=1, le=200),
+    fecha_desde: Optional[date] = None,
+    fecha_hasta: Optional[date] = None,
+    db: Session = Depends(get_db)
+):
+    """Listar ventas con filtros opcionales de fecha"""
+    return listar_ventas(db, skip, limit, fecha_desde, fecha_hasta)
+
+
 @router.post("/abrir")
 def abrir_venta(db: Session = Depends(get_db)):
-    """Crea una nueva venta abierta"""
+    """
+    Crea una nueva venta en estado 'abierta'.
+    Luego agrégale productos y ciérrala para completar la transacción.
+    """
     try:
         venta = crear_venta_abierta(db)
         return {
-            "mensaje": "Venta abierta creada",
+            "mensaje": "Venta abierta. Ahora agrega productos y ciérrala.",
             "venta_id": venta.id,
             "estado": venta.estado.value
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{venta_id}")
+def obtener(venta_id: int, db: Session = Depends(get_db)):
+    """Obtener todos los detalles de una venta por su ID"""
+    try:
+        return obtener_venta(db, venta_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
 
 
 @router.post("/{venta_id}/productos")
@@ -38,13 +65,16 @@ def agregar_producto(
     data: AgregarProductoVenta,
     db: Session = Depends(get_db)
 ):
-    """Agrega un producto a la venta abierta"""
+    """
+    Agrega un producto a una venta abierta.
+    Si el producto ya estaba, suma la cantidad automáticamente.
+    """
     try:
         vp = agregar_producto_a_venta(
-            db, 
-            venta_id, 
-            data.producto_id, 
-            data.cantidad, 
+            db,
+            venta_id,
+            data.producto_id,
+            data.cantidad,
             data.precio_unitario
         )
         return {
@@ -52,7 +82,8 @@ def agregar_producto(
             "venta_id": venta_id,
             "producto_id": vp.producto_id,
             "cantidad": vp.cantidad,
-            "precio_unitario": vp.precio_unitario
+            "precio_unitario": vp.precio_unitario,
+            "subtotal": round(vp.cantidad * vp.precio_unitario, 2)
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -64,14 +95,17 @@ def cerrar(
     data: CerrarVentaRequest,
     db: Session = Depends(get_db)
 ):
-    """Cierra la venta y genera el recibo"""
+    """
+    Cierra la venta: calcula el total, descuenta stock,
+    detecta si hubo ventas sin stock, genera el recibo
+    y envía alertas a Telegram si corresponde.
+    """
     try:
         venta = cerrar_venta(db, venta_id, MetodoPagoEnum(data.metodo_pago))
-        
-        # Generar recibo
+
         from services.recibo_service import generar_recibo
         recibo = generar_recibo(db, venta.id)
-        
+
         return {
             "mensaje": "Venta cerrada exitosamente",
             "venta": {
@@ -79,7 +113,8 @@ def cerrar(
                 "total": venta.total,
                 "tipo": venta.tipo.value,
                 "metodo_pago": venta.metodo_pago.value,
-                "estado": venta.estado.value
+                "estado": venta.estado.value,
+                "fecha": venta.fecha
             },
             "recibo": {
                 "id": recibo.id,
@@ -91,34 +126,13 @@ def cerrar(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{venta_id}")
-def obtener(venta_id: int, db: Session = Depends(get_db)):
-    """Obtener detalles de una venta"""
-    try:
-        return obtener_venta(db, venta_id)
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.get("/")
-def listar(
-    skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
-    fecha_desde: Optional[date] = None,
-    fecha_hasta: Optional[date] = None,
-    db: Session = Depends(get_db)
-):
-    """Listar ventas con filtros"""
-    return listar_ventas(db, skip, limit, fecha_desde, fecha_hasta)
-
-
 @router.delete("/{venta_id}/productos/{producto_id}")
 def eliminar_producto(
     venta_id: int,
     producto_id: int,
     db: Session = Depends(get_db)
 ):
-    """Eliminar un producto de una venta abierta"""
+    """Eliminar un producto de una venta que todavía está abierta"""
     try:
         return eliminar_producto_venta(db, venta_id, producto_id)
     except Exception as e:
@@ -127,7 +141,10 @@ def eliminar_producto(
 
 @router.post("/{venta_id}/anular")
 def anular(venta_id: int, db: Session = Depends(get_db)):
-    """Anular una venta completa"""
+    """
+    Anula una venta completa.
+    Devuelve el stock de todos los productos y registra los movimientos.
+    """
     try:
         return anular_venta(db, venta_id)
     except Exception as e:

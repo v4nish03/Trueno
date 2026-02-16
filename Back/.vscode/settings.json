@@ -1,0 +1,5 @@
+{
+  "python.defaultInterpreterPath": "/home/v4/Trueno/Back/.venv/bin/python",
+  "python.analysis.extraPaths": ["./"],
+  "python.languageServer": "Pylance"
+}
