@@ -1,23 +1,25 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from database import get_db
-from schemas.producto import ProductoCreate, ProductoUpdate
+from schemas.producto import ProductoCreate, ProductoUpdate, ProductoResponse
 from services import producto_service
 from typing import List, Optional
 
 router = APIRouter()
 
 
-@router.post("/", response_model=dict)
+@router.post("/", response_model=ProductoResponse)
 def crear(producto: ProductoCreate, db: Session = Depends(get_db)):
     """Crear un nuevo producto con stock inicial opcional"""
     try:
-        return producto_service.crear_producto(db, **producto.dict())
+        producto_creado = producto_service.crear_producto(db, **producto.model_dump())
+        # ✅ Ahora simplemente devuelve el objeto, Pydantic lo convierte
+        return ProductoResponse.from_orm(producto_creado)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/", response_model=List[dict])
+@router.get("/", response_model=List[ProductoResponse])
 def listar(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=500),
@@ -27,75 +29,26 @@ def listar(
 ):
     """Listar todos los productos. Soporta búsqueda por nombre o código."""
     productos = producto_service.listar_productos(db, skip, limit, buscar, solo_activos)
-    return [
-        {
-            "id": p.id,
-            "codigo": p.codigo,
-            "nombre": p.nombre,
-            "descripcion": p.descripcion,
-            "precio1": p.precio1,
-            "precio2": p.precio2,
-            "precio3": p.precio3,
-            "precio4": p.precio4,
-            "stock": p.stock,
-            "stock_minimo": p.stock_minimo,
-            "ventas_sin_stock": p.ventas_sin_stock,
-            "ubicacion": p.ubicacion.value,
-            "activo": p.activo,
-            "fecha_creacion": p.fecha_creacion
-        }
-        for p in productos
-    ]
+    # ✅ Convertir lista de objetos ORM a lista de schemas
+    return [ProductoResponse.from_orm(p) for p in productos]
 
 
-# ⚠️ IMPORTANTE: rutas estáticas SIEMPRE antes que rutas con parámetros
-@router.get("/codigo/{codigo}", response_model=dict)
+@router.get("/codigo/{codigo}", response_model=ProductoResponse)
 def obtener_por_codigo(codigo: str, db: Session = Depends(get_db)):
     """Buscar producto por código (útil para lectores de código de barras)"""
     producto = producto_service.obtener_producto_por_codigo(db, codigo)
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-
-    return {
-        "id": producto.id,
-        "codigo": producto.codigo,
-        "nombre": producto.nombre,
-        "descripcion": producto.descripcion,
-        "precio1": producto.precio1,
-        "precio2": producto.precio2,
-        "precio3": producto.precio3,
-        "precio4": producto.precio4,
-        "stock": producto.stock,
-        "stock_minimo": producto.stock_minimo,
-        "ubicacion": producto.ubicacion.value,
-        "activo": producto.activo
-    }
+    return ProductoResponse.from_orm(producto)
 
 
-@router.get("/{producto_id}", response_model=dict)
+@router.get("/{producto_id}", response_model=ProductoResponse)
 def obtener(producto_id: int, db: Session = Depends(get_db)):
     """Obtener un producto por ID con todos sus datos"""
     producto = producto_service.obtener_producto(db, producto_id)
     if not producto:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-
-    return {
-        "id": producto.id,
-        "codigo": producto.codigo,
-        "nombre": producto.nombre,
-        "descripcion": producto.descripcion,
-        "precio1": producto.precio1,
-        "precio2": producto.precio2,
-        "precio3": producto.precio3,
-        "precio4": producto.precio4,
-        "stock": producto.stock,
-        "stock_minimo": producto.stock_minimo,
-        "ventas_sin_stock": producto.ventas_sin_stock,
-        "ubicacion": producto.ubicacion.value,
-        "activo": producto.activo,
-        "fecha_creacion": producto.fecha_creacion,
-        "fecha_edicion": producto.fecha_edicion
-    }
+    return ProductoResponse.from_orm(producto)
 
 
 @router.put("/{producto_id}", response_model=dict)
@@ -109,16 +62,11 @@ def actualizar(
         producto = producto_service.actualizar_producto(
             db,
             producto_id,
-            producto_data.dict(exclude_unset=True)
+            producto_data.model_dump(exclude_unset=True)
         )
         return {
             "mensaje": "Producto actualizado correctamente",
-            "producto": {
-                "id": producto.id,
-                "codigo": producto.codigo,
-                "nombre": producto.nombre,
-                "stock": producto.stock
-            }
+            "producto": ProductoResponse.from_orm(producto).model_dump()
         }
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

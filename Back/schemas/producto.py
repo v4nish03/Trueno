@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from typing import Optional
 from datetime import datetime
 
@@ -24,6 +24,7 @@ class ProductoUpdate(BaseModel):
     stock_minimo: Optional[int] = None
     ubicacion: Optional[str] = None
 
+# ✅ CORREGIDO - Usar ConfigDict en lugar de class Config
 class ProductoResponse(BaseModel):
     id: int
     codigo: str
@@ -39,6 +40,29 @@ class ProductoResponse(BaseModel):
     ubicacion: str
     activo: bool
     fecha_creacion: datetime
+    fecha_edicion: datetime
     
-    class Config:
-        from_attributes = True
+    # ✅ NUEVO - ConfigDict en lugar de class Config
+    model_config = ConfigDict(from_attributes=True)
+    
+    # ✅ CORREGIDO - from_orm sigue funcionando
+    @classmethod
+    def from_orm(cls, obj):
+        data = {
+            "id": obj.id,
+            "codigo": obj.codigo,
+            "nombre": obj.nombre,
+            "descripcion": obj.descripcion,
+            "precio1": obj.precio1,
+            "precio2": obj.precio2,
+            "precio3": obj.precio3,
+            "precio4": obj.precio4,
+            "stock": obj.stock,
+            "stock_minimo": obj.stock_minimo,
+            "ventas_sin_stock": obj.ventas_sin_stock,
+            "ubicacion": obj.ubicacion.value,
+            "activo": obj.activo,
+            "fecha_creacion": obj.fecha_creacion,
+            "fecha_edicion": obj.fecha_edicion
+        }
+        return cls(**data)

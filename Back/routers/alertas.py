@@ -7,10 +7,7 @@ from services.alertas_service import (
     productos_con_ventas_sin_stock
 )
 
-router = APIRouter(
-    prefix="/alertas",
-    tags=["Alertas"]
-)
+router = APIRouter()
 
 
 @router.get("/stock-bajo")

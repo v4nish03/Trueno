@@ -1,0 +1,52 @@
+============================= test session starts ==============================
+platform linux -- Python 3.14.2, pytest-9.0.2, pluggy-1.6.0 -- /home/v4/Trueno/Back/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /home/v4/Trueno/Back
+configfile: pytest.ini
+plugins: anyio-4.12.0, asyncio-1.3.0, cov-7.0.0
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 41 items
+
+test/test_alertas.py::TestAlertas::test_alertas_stock_bajo PASSED        [  2%]
+test/test_alertas.py::TestAlertas::test_alertas_ventas_sin_stock PASSED  [  4%]
+test/test_devoluciones.py::TestDevoluciones::test_devolver_producto_parcial PASSED [  7%]
+test/test_devoluciones.py::TestDevoluciones::test_devolver_producto_completo PASSED [  9%]
+test/test_devoluciones.py::TestDevoluciones::test_no_devolver_mas_de_lo_vendido PASSED [ 12%]
+test/test_devoluciones.py::TestDevoluciones::test_no_devolver_de_venta_anulada PASSED [ 14%]
+test/test_devoluciones.py::TestDevoluciones::test_devolver_producto_inexistente_en_venta PASSED [ 17%]
+test/test_productos.py::TestCrearProducto::test_crear_producto_completo PASSED [ 19%]
+test/test_productos.py::TestCrearProducto::test_crear_producto_minimo PASSED [ 21%]
+test/test_productos.py::TestCrearProducto::test_crear_producto_codigo_duplicado PASSED [ 24%]
+test/test_productos.py::TestListarProductos::test_listar_productos_vacio PASSED [ 26%]
+test/test_productos.py::TestListarProductos::test_listar_productos PASSED [ 29%]
+test/test_productos.py::TestListarProductos::test_buscar_producto_por_nombre PASSED [ 31%]
+test/test_productos.py::TestListarProductos::test_buscar_producto_por_codigo PASSED [ 34%]
+test/test_productos.py::TestObtenerProducto::test_obtener_producto_por_id PASSED [ 36%]
+test/test_productos.py::TestObtenerProducto::test_obtener_producto_inexistente PASSED [ 39%]
+test/test_productos.py::TestObtenerProducto::test_obtener_producto_por_codigo PASSED [ 41%]
+test/test_productos.py::TestActualizarProducto::test_actualizar_nombre_producto PASSED [ 43%]
+test/test_productos.py::TestActualizarProducto::test_actualizar_precio PASSED [ 46%]
+test/test_productos.py::TestGestionStock::test_ingresar_stock PASSED     [ 48%]
+test/test_productos.py::TestGestionStock::test_ajustar_stock_manual PASSED [ 51%]
+test/test_productos.py::TestGestionStock::test_ver_historial_movimientos PASSED [ 53%]
+test/test_productos.py::TestDescontinuarProducto::test_descontinuar_producto PASSED [ 56%]
+test/test_productos.py::TestDescontinuarProducto::test_reactivar_producto PASSED [ 58%]
+test/test_reportes.py::TestReportes::test_dashboard PASSED               [ 60%]
+test/test_reportes.py::TestReportes::test_reporte_ventas_diarias PASSED  [ 63%]
+test/test_reportes.py::TestReportes::test_reporte_mensual PASSED         [ 65%]
+test/test_reportes.py::TestReportes::test_reporte_productos_mas_vendidos PASSED [ 68%]
+test/test_reportes.py::TestReportes::test_reporte_por_metodo_pago PASSED [ 70%]
+test/test_reportes.py::TestReportes::test_reporte_ventas_sin_stock PASSED [ 73%]
+test/test_ventas.py::TestCrearVenta::test_abrir_venta PASSED             [ 75%]
+test/test_ventas.py::TestCrearVenta::test_agregar_producto_a_venta PASSED [ 78%]
+test/test_ventas.py::TestCrearVenta::test_agregar_mismo_producto_suma_cantidad PASSED [ 80%]
+test/test_ventas.py::TestCerrarVenta::test_cerrar_venta_con_stock PASSED [ 82%]
+test/test_ventas.py::TestCerrarVenta::test_cerrar_venta_sin_stock PASSED [ 85%]
+test/test_ventas.py::TestCerrarVenta::test_no_cerrar_venta_sin_productos PASSED [ 87%]
+test/test_ventas.py::TestGestionVentas::test_obtener_venta PASSED        [ 90%]
+test/test_ventas.py::TestGestionVentas::test_listar_ventas PASSED        [ 92%]
+test/test_ventas.py::TestGestionVentas::test_eliminar_producto_de_venta_abierta PASSED [ 95%]
+test/test_ventas.py::TestAnularVenta::test_anular_venta_completa PASSED  [ 97%]
+test/test_ventas.py::TestAnularVenta::test_no_anular_venta_ya_anulada PASSED [100%]
+
+======================= 41 passed, 46 warnings in 3.62s ========================
