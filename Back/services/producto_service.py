@@ -25,6 +25,9 @@ def crear_producto(
     if existe:
         raise Exception(f"Ya existe un producto con el código '{codigo}'")
 
+    if ubicacion not in {"tienda", "bodega"}:
+        raise Exception("Ubicación inválida. Usa 'tienda' o 'bodega'")
+
     ubicacion_enum = UbicacionProducto.TIENDA if ubicacion == "tienda" else UbicacionProducto.BODEGA
 
     producto = Producto(
@@ -100,6 +103,8 @@ def actualizar_producto(
     # Convertir ubicacion string a enum si viene en los datos
     if "ubicacion" in producto_data and producto_data["ubicacion"]:
         ubicacion_str = producto_data["ubicacion"]
+        if ubicacion_str not in {"tienda", "bodega"}:
+            raise Exception("Ubicación inválida. Usa 'tienda' o 'bodega'")
         producto_data["ubicacion"] = (
             UbicacionProducto.TIENDA if ubicacion_str == "tienda"
             else UbicacionProducto.BODEGA
