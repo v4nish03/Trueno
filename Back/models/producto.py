@@ -1,20 +1,21 @@
 from sqlalchemy import (
-    Column,
-    Integer,
-    String,
-    Float,
     Boolean,
+    CheckConstraint,
+    Column,
     DateTime,
     Enum,
-    Text
+    Float,
+    Integer,
+    String,
+    Text,
 )
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
-from sqlalchemy.orm import relationship
+
 from database import Base
 
 
-# Enum para ubicación
 class UbicacionProducto(enum.Enum):
     TIENDA = "tienda"
     BODEGA = "bodega"
@@ -22,6 +23,12 @@ class UbicacionProducto(enum.Enum):
 
 class Producto(Base):
     __tablename__ = "productos"
+    __table_args__ = (
+        CheckConstraint("stock >= 0", name="ck_producto_stock_non_negative"),
+        CheckConstraint("stock_minimo >= 0", name="ck_producto_stock_minimo_non_negative"),
+        CheckConstraint("ventas_sin_stock >= 0", name="ck_producto_ventas_sin_stock_non_negative"),
+        CheckConstraint("precio1 > 0", name="ck_producto_precio1_positive"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
@@ -36,7 +43,6 @@ class Producto(Base):
 
     stock = Column(Integer, nullable=False, default=0)
     stock_minimo = Column(Integer, nullable=False, default=5)
-    
     ventas_sin_stock = Column(Integer, nullable=False, default=0)
 
     movimientos = relationship("MovimientoInventario", back_populates="producto")
@@ -44,7 +50,7 @@ class Producto(Base):
     ubicacion = Column(
         Enum(UbicacionProducto),
         nullable=False,
-        default=UbicacionProducto.TIENDA
+        default=UbicacionProducto.TIENDA,
     )
 
     activo = Column(Boolean, nullable=False, default=True)
@@ -53,5 +59,5 @@ class Producto(Base):
     fecha_edicion = Column(
         DateTime(timezone=True),
         server_default=func.now(),
-        onupdate=func.now()
+        onupdate=func.now(),
     )
