@@ -1,20 +1,24 @@
-from pydantic import BaseModel
-from typing import List, Optional
-from datetime import date
+from typing import List, Literal
+
+from pydantic import BaseModel, Field
+
 
 class VentaItem(BaseModel):
-    producto_id: int
-    cantidad: int
-    precio: float
+    producto_id: int = Field(..., gt=0)
+    cantidad: int = Field(..., gt=0)
+    precio: float = Field(..., gt=0)
+
 
 class VentaCreate(BaseModel):
-    items: List[VentaItem]
-    metodo_pago: str
+    items: List[VentaItem] = Field(..., min_length=1)
+    metodo_pago: Literal["efectivo", "qr"]
+
 
 class AgregarProductoVenta(BaseModel):
-    producto_id: int
-    cantidad: int
-    precio_unitario: float
+    producto_id: int = Field(..., gt=0)
+    cantidad: int = Field(..., gt=0)
+    precio_unitario: float = Field(..., gt=0)
+
 
 class CerrarVentaRequest(BaseModel):
-    metodo_pago: str  # "efectivo" o "qr"
+    metodo_pago: Literal["efectivo", "qr"]

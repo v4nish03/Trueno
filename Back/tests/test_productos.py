@@ -51,6 +51,30 @@ class TestCrearProducto:
         assert "Ya existe un producto" in response.json()["detail"]
 
 
+
+
+    def test_no_crear_producto_con_precio_invalido(self, client):
+        """No debería permitir precio <= 0"""
+        response = client.post("/productos/", json={
+            "codigo": "BADPRICE",
+            "nombre": "Producto Inválido",
+            "precio1": 0
+        })
+
+        assert response.status_code == 422
+
+    def test_no_crear_producto_con_ubicacion_invalida(self, client):
+        """No debería permitir ubicaciones fuera de tienda/bodega"""
+        response = client.post("/productos/", json={
+            "codigo": "BADLOC",
+            "nombre": "Ubicación Inválida",
+            "precio1": 10.0,
+            "ubicacion": "mostrador"
+        })
+
+        assert response.status_code == 400
+
+
 class TestListarProductos:
     """Tests para listar productos"""
 
