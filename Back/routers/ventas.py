@@ -101,10 +101,22 @@ def cerrar(
     y envía alertas a Telegram si corresponde.
     """
     try:
-        venta = cerrar_venta(db, venta_id, MetodoPagoEnum(data.metodo_pago))
+        venta, productos_sin_stock_ids = cerrar_venta(
+            db, venta_id, MetodoPagoEnum(data.metodo_pago)
+        )
 
         from services.recibo_service import generar_recibo
         recibo = generar_recibo(db, venta.id)
+
+        if venta.tipo.value == "sin_stock":
+            from services.alertas_service import enviar_alerta_venta_detallada
+
+            enviar_alerta_venta_detallada(
+                db,
+                venta_id=venta.id,
+                recibo_id=recibo.id,
+                productos_sin_stock_ids=productos_sin_stock_ids,
+            )
 
         return {
             "mensaje": "Venta cerrada exitosamente",

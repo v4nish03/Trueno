@@ -1,30 +1,33 @@
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, Field
+
 
 class ProductoCreate(BaseModel):
-    codigo: str
-    nombre: str
+    codigo: str = Field(..., min_length=1, max_length=50)
+    nombre: str = Field(..., min_length=1, max_length=150)
     descripcion: Optional[str] = None
-    precio1: float
-    precio2: Optional[float] = None
-    precio3: Optional[float] = None
-    precio4: Optional[float] = None
-    stock_inicial: int = 0
-    stock_minimo: int = 5
+    precio1: float = Field(..., gt=0)
+    precio2: Optional[float] = Field(None, gt=0)
+    precio3: Optional[float] = Field(None, gt=0)
+    precio4: Optional[float] = Field(None, gt=0)
+    stock_inicial: int = Field(0, ge=0)
+    stock_minimo: int = Field(5, ge=0)
     ubicacion: Optional[str] = "tienda"
 
+
 class ProductoUpdate(BaseModel):
-    nombre: Optional[str] = None
+    nombre: Optional[str] = Field(None, min_length=1, max_length=150)
     descripcion: Optional[str] = None
-    precio1: Optional[float] = None
-    precio2: Optional[float] = None
-    precio3: Optional[float] = None
-    precio4: Optional[float] = None
-    stock_minimo: Optional[int] = None
+    precio1: Optional[float] = Field(None, gt=0)
+    precio2: Optional[float] = Field(None, gt=0)
+    precio3: Optional[float] = Field(None, gt=0)
+    precio4: Optional[float] = Field(None, gt=0)
+    stock_minimo: Optional[int] = Field(None, ge=0)
     ubicacion: Optional[str] = None
 
-# ✅ CORREGIDO - Usar ConfigDict en lugar de class Config
+
 class ProductoResponse(BaseModel):
     id: int
     codigo: str
@@ -41,11 +44,9 @@ class ProductoResponse(BaseModel):
     activo: bool
     fecha_creacion: datetime
     fecha_edicion: datetime
-    
-    # ✅ NUEVO - ConfigDict en lugar de class Config
+
     model_config = ConfigDict(from_attributes=True)
-    
-    # ✅ CORREGIDO - from_orm sigue funcionando
+
     @classmethod
     def from_orm(cls, obj):
         data = {
@@ -63,6 +64,6 @@ class ProductoResponse(BaseModel):
             "ubicacion": obj.ubicacion.value,
             "activo": obj.activo,
             "fecha_creacion": obj.fecha_creacion,
-            "fecha_edicion": obj.fecha_edicion
+            "fecha_edicion": obj.fecha_edicion,
         }
         return cls(**data)

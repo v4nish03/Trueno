@@ -1,14 +1,16 @@
-# models/movimiento.py
-from sqlalchemy import Column, Integer, Enum, ForeignKey, DateTime
-from sqlalchemy.sql import func
-from database import Base
-import enum
+from sqlalchemy import CheckConstraint, Column, DateTime, Enum, ForeignKey, Integer
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import enum
+
+from database import Base
+
 
 class TipoMovimientoEnum(enum.Enum):
     ingreso = "ingreso"
     salida = "salida"
     ajuste = "ajuste"
+
 
 class MotivoMovimientoEnum(enum.Enum):
     compra = "compra"
@@ -17,12 +19,16 @@ class MotivoMovimientoEnum(enum.Enum):
     stock_inicial = "stock_inicial"
     correccion = "correccion"
 
+
 class MovimientoInventario(Base):
     __tablename__ = "movimientos_inventario"
+    __table_args__ = (
+        CheckConstraint("cantidad > 0", name="ck_movimiento_cantidad_positive"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
-    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    producto_id = Column(Integer, ForeignKey("productos.id", ondelete="RESTRICT"), nullable=False)
     producto = relationship("Producto", back_populates="movimientos")
 
     tipo = Column(Enum(TipoMovimientoEnum), nullable=False)
@@ -31,6 +37,5 @@ class MovimientoInventario(Base):
     cantidad = Column(Integer, nullable=False)
 
     referencia_id = Column(Integer, nullable=True)
-    # Ej: id de venta, id de devolución (a futuro)
 
     fecha = Column(DateTime(timezone=True), server_default=func.now())

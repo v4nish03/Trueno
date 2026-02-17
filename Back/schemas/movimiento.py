@@ -1,6 +1,7 @@
-from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional
+from typing import Literal, Optional
+
+from pydantic import BaseModel, Field
 
 
 class MovimientoResponse(BaseModel):
@@ -17,5 +18,5 @@ class MovimientoResponse(BaseModel):
 
 
 class IngresoStockRequest(BaseModel):
-    cantidad: int
-    motivo: str = "compra"  # compra | devolucion | correccion
+    cantidad: int = Field(..., gt=0)
+    motivo: Literal["compra", "devolucion", "correccion"] = "compra"
