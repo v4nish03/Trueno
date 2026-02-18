@@ -196,6 +196,15 @@ def cerrar_venta(db: Session, venta_id: int, metodo_pago: MetodoPagoEnum):
         db.refresh(venta)
 
         return venta, sin_stock_producto_ids
+        if venta_sin_stock:
+            try:
+                from services.alertas_service import enviar_alertas
+
+                enviar_alertas(db)
+            except Exception as e:
+                print(f"Error enviando alertas: {e}")
+
+        return venta
 
     except Exception:
         db.rollback()

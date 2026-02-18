@@ -25,6 +25,9 @@ def _fmt_fecha(fecha: datetime | str | None) -> str:
         return "N/D"
     if isinstance(fecha, str):
         return fecha
+def _fmt_fecha(fecha: datetime | None) -> str:
+    if not fecha:
+        return "N/D"
     return fecha.strftime("%Y-%m-%d %H:%M:%S")
 
 

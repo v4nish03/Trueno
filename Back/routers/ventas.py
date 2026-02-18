@@ -123,6 +123,9 @@ def cerrar(
             # Compatibilidad por si cerrar_venta retorna solo venta
             venta = cierre_resultado
             productos_sin_stock_ids = []
+        venta, productos_sin_stock_ids = cerrar_venta(
+            db, venta_id, MetodoPagoEnum(data.metodo_pago)
+        )
 
         from services.recibo_service import generar_recibo
         recibo = generar_recibo(db, venta.id)
@@ -140,6 +143,15 @@ def cerrar(
             except Exception as alert_error:
                 # No romper la venta por un problema de notificación
                 print(f"Error enviando alerta detallada: {alert_error}")
+        if venta.tipo.value == "sin_stock":
+            from services.alertas_service import enviar_alerta_venta_detallada
+
+            enviar_alerta_venta_detallada(
+                db,
+                venta_id=venta.id,
+                recibo_id=recibo.id,
+                productos_sin_stock_ids=productos_sin_stock_ids,
+            )
 
         return {
             "mensaje": "Venta cerrada exitosamente",
