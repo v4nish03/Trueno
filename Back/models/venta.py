@@ -1,8 +1,9 @@
-from sqlalchemy import Column, Integer, Float, Enum, DateTime
-from sqlalchemy.sql import func
-from database import Base
-import enum
+from sqlalchemy import CheckConstraint, Column, DateTime, Enum, Float, Integer
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import enum
+
+from database import Base
 
 
 class TipoVentaEnum(enum.Enum):
@@ -23,28 +24,20 @@ class EstadoVentaEnum(enum.Enum):
 
 class Venta(Base):
     __tablename__ = "ventas"
+    __table_args__ = (
+        CheckConstraint("total IS NULL OR total >= 0", name="ck_venta_total_non_negative"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
-    # relaciones
-    productos = relationship("VentaProducto", backref="venta")
+    productos = relationship("VentaProducto", backref="venta", cascade="all, delete-orphan")
 
-    # datos principales
     fecha = Column(DateTime(timezone=True), server_default=func.now())
 
-    total = Column(Float, nullable=True)  # 🔥 se calcula al cerrar
+    total = Column(Float, nullable=True)
 
-    tipo = Column(
-        Enum(TipoVentaEnum),
-        nullable=True  # 🔥 se define al cerrar
-    )
+    tipo = Column(Enum(TipoVentaEnum), nullable=True)
 
-    metodo_pago = Column(
-        Enum(MetodoPagoEnum),
-        nullable=True  # 🔥 se define al cerrar
-    )
+    metodo_pago = Column(Enum(MetodoPagoEnum), nullable=True)
 
-    estado = Column(
-        Enum(EstadoVentaEnum),
-        default=EstadoVentaEnum.abierta
-    )
+    estado = Column(Enum(EstadoVentaEnum), default=EstadoVentaEnum.abierta)
