@@ -20,11 +20,9 @@ def productos_con_ventas_sin_stock(db: Session):
     ).all()
 
 
-def _fmt_fecha(fecha: datetime | str | None) -> str:
+def _fmt_fecha(fecha: datetime | None) -> str:
     if not fecha:
         return "N/D"
-    if isinstance(fecha, str):
-        return fecha
     return fecha.strftime("%Y-%m-%d %H:%M:%S")
 
 
