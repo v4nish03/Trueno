@@ -162,6 +162,7 @@ def cerrar_venta(db: Session, venta_id: int, metodo_pago: MetodoPagoEnum):
 
         total = 0.0
         venta_sin_stock = False
+        sin_stock_producto_ids: list[int] = []
 
         for vp in productos_venta:
             producto = productos_map.get(vp.producto_id)
@@ -173,6 +174,7 @@ def cerrar_venta(db: Session, venta_id: int, metodo_pago: MetodoPagoEnum):
             else:
                 venta_sin_stock = True
                 producto.ventas_sin_stock += vp.cantidad
+                sin_stock_producto_ids.append(producto.id)
 
             registrar_movimiento(
                 db,
@@ -193,6 +195,7 @@ def cerrar_venta(db: Session, venta_id: int, metodo_pago: MetodoPagoEnum):
         db.commit()
         db.refresh(venta)
 
+        return venta, sin_stock_producto_ids
         if venta_sin_stock:
             try:
                 from services.alertas_service import enviar_alertas

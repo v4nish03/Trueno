@@ -66,3 +66,31 @@ class TestAlertas:
         assert "Venta N°" in capturado["texto"]
         assert "Recibo N°" in capturado["texto"]
         assert "Fecha venta" in capturado["texto"]
+
+
+    def test_cerrar_venta_no_falla_si_alerta_detallada_falla(self, client, producto_sin_stock, monkeypatch):
+        """La venta debe completarse aunque falle el envío de alerta detallada"""
+        from services import alertas_service
+
+        def boom(*args, **kwargs):
+            raise RuntimeError("fallo telegram")
+
+        monkeypatch.setattr(alertas_service, "enviar_alerta_venta_detallada", boom)
+
+        venta = client.post("/ventas/abrir").json()
+        client.post(
+            f"/ventas/{venta['venta_id']}/productos",
+            json={
+                "producto_id": producto_sin_stock["id"],
+                "cantidad": 2,
+                "precio_unitario": 50.0
+            }
+        )
+
+        response = client.post(
+            f"/ventas/{venta['venta_id']}/cerrar",
+            json={"metodo_pago": "efectivo"}
+        )
+
+        assert response.status_code == 200
+        assert response.json()["venta"]["estado"] == "completa"
