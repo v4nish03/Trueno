@@ -60,6 +60,39 @@ class TestCrearVenta:
         assert data["cantidad"] == 5  # 2 + 3
 
 
+
+
+    def test_no_agregar_producto_con_cantidad_invalida(self, client, producto_ejemplo):
+        """No debería permitir cantidad <= 0 por validación de schema"""
+        venta = client.post("/ventas/abrir").json()
+
+        response = client.post(
+            f"/ventas/{venta['venta_id']}/productos",
+            json={
+                "producto_id": producto_ejemplo["id"],
+                "cantidad": 0,
+                "precio_unitario": 100.0
+            }
+        )
+
+        assert response.status_code == 422
+
+    def test_no_agregar_producto_con_precio_invalido(self, client, producto_ejemplo):
+        """No debería permitir precio <= 0 por validación de schema"""
+        venta = client.post("/ventas/abrir").json()
+
+        response = client.post(
+            f"/ventas/{venta['venta_id']}/productos",
+            json={
+                "producto_id": producto_ejemplo["id"],
+                "cantidad": 1,
+                "precio_unitario": 0
+            }
+        )
+
+        assert response.status_code == 422
+
+
 class TestCerrarVenta:
     """Tests para cerrar ventas"""
 
@@ -107,6 +140,17 @@ class TestCerrarVenta:
         assert response.status_code == 200
         data = response.json()
         assert data["venta"]["tipo"] == "sin_stock"
+
+
+
+    def test_no_cerrar_venta_con_metodo_pago_invalido(self, client, venta_abierta):
+        """No debería aceptar métodos de pago fuera de efectivo/qr"""
+        response = client.post(
+            f"/ventas/{venta_abierta['venta_id']}/cerrar",
+            json={"metodo_pago": "tarjeta"}
+        )
+
+        assert response.status_code == 422
 
     def test_no_cerrar_venta_sin_productos(self, client):
         """NO debería cerrar venta vacía"""
