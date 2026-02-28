@@ -1,8 +1,23 @@
 <template>
   <div>
-    <div class="page-header">
-      <h1 class="page-title">Dashboard</h1>
-      <p class="page-subtitle">Resumen del negocio — {{ fechaHoy }}</p>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px">
+      <div>
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Resumen del negocio — {{ fechaHoy }}</p>
+      </div>
+
+      <!-- Panel de Caja -->
+      <div v-if="!cajaStore.cargando" class="card" style="padding:12px 16px; min-width:260px; display:flex; gap:16px; align-items:center; background: var(--color-surface-2); margin:0">
+        <div style="flex:1">
+          <div style="font-size:11px; color: var(--color-muted); text-transform:uppercase; font-weight:600">Turno de Caja</div>
+          <div :style="{ color: cajaStore.abierta ? 'var(--color-success)' : 'var(--color-danger)', fontWeight:700, display:'flex', alignItems:'center', gap:'6px', marginTop:'4px' }">
+            <span :style="{ display:'inline-block', width:'8px', height:'8px', borderRadius:'50%', background: cajaStore.abierta ? 'var(--color-success)' : 'var(--color-danger)' }"></span>
+            {{ cajaStore.abierta ? 'ABIERTA' : 'CERRADA' }}
+          </div>
+        </div>
+        <button v-if="cajaStore.abierta" class="btn btn-danger btn-sm" @click="modalCerrarCaja = true" style="margin:0">Cerrar Caja</button>
+        <button v-else class="btn btn-primary btn-sm" @click="modalAbrirCaja = true" style="margin:0">Abrir Turno</button>
+      </div>
     </div>
 
     <!-- KPIs -->
@@ -128,6 +143,56 @@
         </div>
       </div>
     </template>
+
+    <!-- Modal Abrir Caja -->
+    <div v-if="modalAbrirCaja" class="modal-backdrop" @click.self="modalAbrirCaja=false">
+      <div class="modal">
+        <h3 style="margin-top:0">Abrir Turno de Caja</h3>
+        <p style="font-size:12px; color:var(--color-muted); margin-bottom:16px">
+          Ingresa el monto base (sencillo/cambio en el cajón) para iniciar el turno.
+        </p>
+        <div class="form-group">
+          <label>Monto Inicial (Efectivo Físico Bs)</label>
+          <input type="number" v-model="montoInicial" min="0" step="0.5" class="input" />
+        </div>
+        <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:20px">
+          <button class="btn btn-ghost" @click="modalAbrirCaja=false">Cancelar</button>
+          <button class="btn btn-primary" @click="submitAbrirCaja">Abrir Turno</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Cerrar Caja -->
+    <div v-if="modalCerrarCaja && cajaStore.turno" class="modal-backdrop" @click.self="modalCerrarCaja=false">
+      <div class="modal">
+        <h3 style="margin-top:0">Cerrar Turno</h3>
+        <p style="font-size:12px; color:var(--color-muted); margin-bottom:16px">Cuadre de caja. Verifica que el efectivo en tu cajón coincida con el total esperado.</p>
+        
+        <div style="background:var(--color-surface-2); padding:16px; border-radius:8px; margin-bottom:16px">
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px">
+            <span style="color:var(--color-muted)">Monto Inicial:</span>
+            <span>Bs {{ fmt(cajaStore.turno.monto_inicial) }}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-bottom:8px">
+            <span style="color:var(--color-muted)">Ingresos (Efectivo):</span>
+            <span style="color:var(--color-success)">+ Bs {{ fmt(cajaStore.turno.ingresos_efectivo) }}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; margin-top:12px; padding-top:12px; border-top:1px dashed var(--color-border); font-weight:bold; font-size:14px">
+            <span>Efectivo Esperado en Cajón:</span>
+            <span>Bs {{ fmt(cajaStore.turno.total_esperado_caja) }}</span>
+          </div>
+        </div>
+
+        <div style="font-size:11px; color:var(--color-muted); text-align:center; margin-bottom:16px; background:rgba(108,99,255,0.1); padding:8px; border-radius:6px">
+          (Ventas por QR de hoy: Bs {{ fmt(cajaStore.turno.ingresos_qr) }})
+        </div>
+
+        <div style="display:flex; justify-content:flex-end; gap:8px">
+          <button class="btn btn-ghost" @click="modalCerrarCaja=false">Cancelar</button>
+          <button class="btn btn-danger" @click="submitCerrarCaja">Confirmar Cierre</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -135,12 +200,32 @@
 import { ref, onMounted } from 'vue'
 import { reportes as reportesApi } from '@/api/reportes'
 import { useAlertasStore } from '@/stores/alertas'
+import { useCajaStore } from '@/stores/caja'
 
 const alertasStore = useAlertasStore()
+const cajaStore = useCajaStore()
+
 const cargando = ref(true)
 const datos = ref(null)
 const metodoPago = ref([])
 const topProductos = ref([])
+
+const modalAbrirCaja = ref(false)
+const montoInicial = ref(0)
+const submitAbrirCaja = async () => {
+  if (montoInicial.value < 0) {
+    alert("Error: El monto inicial no puede ser un valor negativo.")
+    return
+  }
+  await cajaStore.abrirCaja(montoInicial.value)
+  modalAbrirCaja.value = false
+}
+
+const modalCerrarCaja = ref(false)
+const submitCerrarCaja = async () => {
+  await cajaStore.cerrarCaja()
+  modalCerrarCaja.value = false
+}
 
 const fechaHoy = new Date().toLocaleDateString('es-BO', {
   weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'

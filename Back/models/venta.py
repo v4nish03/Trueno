@@ -1,4 +1,4 @@
-from sqlalchemy import CheckConstraint, Column, DateTime, Enum, Float, Integer
+from sqlalchemy import CheckConstraint, Column, DateTime, Enum, Float, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import enum
@@ -29,6 +29,8 @@ class Venta(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
+
+    turno_id = Column(Integer, ForeignKey("turnos_caja.id"), nullable=True)
 
     productos = relationship("VentaProducto", backref="venta", cascade="all, delete-orphan")
 

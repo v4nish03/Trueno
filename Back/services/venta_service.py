@@ -8,6 +8,7 @@ from models.venta import EstadoVentaEnum, MetodoPagoEnum, TipoVentaEnum, Venta
 from models.venta_producto import VentaProducto
 from services.inventario_service import registrar_movimiento
 from models.movimiento import MotivoMovimientoEnum, TipoMovimientoEnum
+from models.caja import TurnoCaja, EstadoTurnoEnum
 
 
 def crear_venta(db: Session, items: list, metodo_pago: MetodoPagoEnum):
@@ -83,7 +84,11 @@ def crear_venta(db: Session, items: list, metodo_pago: MetodoPagoEnum):
 
 
 def crear_venta_abierta(db: Session):
-    venta = Venta(estado=EstadoVentaEnum.abierta)
+    turno = db.query(TurnoCaja).filter(TurnoCaja.estado == EstadoTurnoEnum.abierto).first()
+    if not turno:
+        raise Exception("No hay un turno de caja abierto. Debes abrir caja primero.")
+
+    venta = Venta(estado=EstadoVentaEnum.abierta, turno_id=turno.id)
     db.add(venta)
     db.commit()
     db.refresh(venta)

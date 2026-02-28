@@ -1,10 +1,12 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from database import Base, engine
 import os
 
-from routers import productos, ventas, alertas, reportes, devoluciones
+from routers import productos, ventas, alertas, reportes, devoluciones, movimientos, caja, sistema
+import models.caja
 
 # Crear todas las tablas al iniciar
 Base.metadata.create_all(bind=engine)
@@ -41,17 +43,38 @@ app.include_router(ventas.router,       prefix="/ventas",       tags=["Ventas"])
 app.include_router(devoluciones.router, prefix="/devoluciones", tags=["Devoluciones"])
 app.include_router(alertas.router,      prefix="/alertas",      tags=["Alertas"])
 app.include_router(reportes.router,     prefix="/reportes",     tags=["Reportes"])
+app.include_router(movimientos.router,  prefix="/movimientos",  tags=["Movimientos"])
+app.include_router(caja.router,         prefix="/caja",         tags=["Caja"])
+app.include_router(sistema.router,      prefix="/sistema",      tags=["Sistema"])
 
 
-# ✅ Endpoint raíz — sirve para verificar que el servidor está corriendo
-@app.get("/", tags=["Sistema"])
-def raiz():
-    return {
-        "sistema": "Trueno Motors - Sistema de Inventario y Ventas",
-        "version": "1.0.0",
-        "estado": "activo",
-        "docs": "/docs"
-    }
+# ✅ Servir el Frontend Construido (Producción)
+frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Front", "dist")
+
+if os.path.isdir(frontend_path):
+    # Primero montar estáticos principales
+    app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path, "assets")), name="assets")
+    
+    # Catch-all para que Vue Router controle la navegación (Single Page Application)
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_vue_spa(full_path: str):
+        # Ignorar peticiones a las rutas exclusivas de API o docs si no emparejaron
+        if full_path.startswith("docs") or full_path.startswith("openapi.json"):
+            return {"detail": "Not Found"}
+            
+        file_path = os.path.join(frontend_path, full_path)
+        if os.path.isfile(file_path):
+            return FileResponse(file_path)
+        
+        # Cualquier otra ruta devuelve el index.html
+        return FileResponse(os.path.join(frontend_path, "index.html"))
+else:
+    @app.get("/", tags=["Sistema"])
+    def raiz():
+        return {
+            "sistema": "Trueno Motors - Desarrollo",
+            "estado": "Frontend no compilado. Usa 'npm run build' en la carpeta Front."
+        }
 
 
 @app.get("/health", tags=["Sistema"])

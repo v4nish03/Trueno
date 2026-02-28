@@ -66,6 +66,7 @@ class TestAlertas:
         assert "Venta N°" in capturado["texto"]
         assert "Recibo N°" in capturado["texto"]
         assert "Fecha venta" in capturado["texto"]
+        assert "Producto Sin Stock" in capturado["texto"]
 
 
     def test_cerrar_venta_no_falla_si_alerta_detallada_falla(self, client, producto_sin_stock, monkeypatch):

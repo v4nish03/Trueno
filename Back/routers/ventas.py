@@ -27,13 +27,9 @@ def _normalizar_metodo_pago(value) -> MetodoPagoEnum:
     """Aceptar metodo de pago en distintos formatos (enum/string/mayúsculas)."""
     if isinstance(value, MetodoPagoEnum):
         return value
-
     raw = str(value).strip().lower()
     return MetodoPagoEnum(raw)
 
-
-# ⚠️ IMPORTANTE: rutas estáticas SIEMPRE antes que /{venta_id}
-# De lo contrario FastAPI confunde "abrir", "listar", etc. con un ID numérico
 
 @router.get("/")
 def listar(
@@ -115,14 +111,6 @@ def cerrar(
     y envía alertas a Telegram si corresponde.
     """
     try:
-        cierre_resultado = cerrar_venta(db, venta_id, _normalizar_metodo_pago(data.metodo_pago))
-
-        if isinstance(cierre_resultado, tuple):
-            venta, productos_sin_stock_ids = cierre_resultado
-        else:
-            # Compatibilidad por si cerrar_venta retorna solo venta
-            venta = cierre_resultado
-            productos_sin_stock_ids = []
         venta, productos_sin_stock_ids = cerrar_venta(
             db, venta_id, MetodoPagoEnum(data.metodo_pago)
         )
@@ -133,7 +121,6 @@ def cerrar(
         if _enum_value(venta.tipo) == "sin_stock":
             try:
                 from services.alertas_service import enviar_alerta_venta_detallada
-
                 enviar_alerta_venta_detallada(
                     db,
                     venta_id=venta.id,
@@ -141,17 +128,7 @@ def cerrar(
                     productos_sin_stock_ids=productos_sin_stock_ids,
                 )
             except Exception as alert_error:
-                # No romper la venta por un problema de notificación
                 print(f"Error enviando alerta detallada: {alert_error}")
-        if venta.tipo.value == "sin_stock":
-            from services.alertas_service import enviar_alerta_venta_detallada
-
-            enviar_alerta_venta_detallada(
-                db,
-                venta_id=venta.id,
-                recibo_id=recibo.id,
-                productos_sin_stock_ids=productos_sin_stock_ids,
-            )
 
         return {
             "mensaje": "Venta cerrada exitosamente",

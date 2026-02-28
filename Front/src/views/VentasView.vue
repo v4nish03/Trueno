@@ -1,8 +1,11 @@
 <template>
   <div>
     <div class="page-header">
-      <h1 class="page-title">💰 Historial de Ventas</h1>
-      <p class="page-subtitle">Todas las transacciones registradas</p>
+      <div>
+        <h1 class="page-title">💰 Historial de Ventas</h1>
+        <p class="page-subtitle">Todas las transacciones registradas</p>
+      </div>
+      <button class="btn btn-secondary btn-sm" @click="exportarCSV">📥 Exportar CSV</button>
     </div>
 
     <!-- Filtros -->
@@ -155,10 +158,15 @@
             </table>
           </div>
 
-          <!-- Recibo -->
-          <div v-if="detalleData.recibo" class="card" style="background: var(--color-surface-2); padding:12px 14px">
-            <div style="font-size:11px; color:var(--color-muted); margin-bottom:4px">🧾 Recibo</div>
-            <div style="font-size:12px; font-family: monospace; color:var(--color-accent-2)">{{ detalleData.recibo.codigo_qr }}</div>
+          <!-- Recibo y acciones -->
+          <div style="display:flex; gap:8px; align-items:center; margin-top:4px; flex-wrap:wrap">
+            <div v-if="detalleData.recibo" class="card" style="background: var(--color-surface-2); padding:10px 14px; flex:1">
+              <div style="font-size:11px; color:var(--color-muted); margin-bottom:4px">🧾 Recibo</div>
+              <div style="font-size:12px; font-family: monospace; color:var(--color-accent-2)">{{ detalleData.recibo.codigo_qr }}</div>
+            </div>
+            <button class="btn btn-secondary" @click="imprimirRecibo(detalleData)" style="white-space:nowrap; padding: 10px 14px; height: 100%">
+              🖨 Imprimir
+            </button>
           </div>
         </template>
 
@@ -292,6 +300,50 @@ async function confirmarDevolucion() {
   } finally {
     devolucionando.value = false
   }
+}
+
+function exportarCSV() {
+  const headers = ['#', 'Fecha', 'Total (Bs)', 'Método', 'Tipo', 'Estado']
+  const rows = ventas.value.map(v => [
+    v.id, fmtFecha(v.fecha), Number(v.total).toFixed(2),
+    v.metodo_pago, v.tipo, v.estado
+  ])
+  const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `ventas_${new Date().toISOString().slice(0, 10)}.csv`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
+function imprimirRecibo(venta) {
+  const items = (venta.productos || venta.items || [])
+  const filas = items.map(i =>
+    `<div class="row"><span>${i.nombre || i.producto_id} x${i.cantidad}</span><span>Bs ${Number((i.cantidad) * (i.precio_unitario ?? i.precio)).toFixed(2)}</span></div>`
+  ).join('')
+  const html = `
+    <html><head><title>Recibo #${venta.id}</title><style>
+      body { font-family: monospace; font-size: 13px; max-width: 300px; margin: auto; padding: 16px }
+      h2 { text-align:center; margin:0 0 4px } hr { border:1px dashed #ccc }
+      .row { display:flex; justify-content:space-between; margin:4px 0 }
+      .total { font-size:16px; font-weight:bold; border-top:2px solid #000; margin-top:8px; padding-top:8px }
+    </style></head><body>
+      <h2>⚡ TRUENO MOTORS</h2>
+      <p style="text-align:center;margin:0 0 8px">Uyuni, Bolivia · ${fmtFecha(venta.fecha)}</p>
+      <hr/>
+      <div class="row"><b>Venta #${venta.id}</b><span>${venta.metodo_pago === 'efectivo' ? 'Efectivo' : 'QR'}</span></div>
+      <hr/>
+      ${filas}
+      <div class="row total"><span>TOTAL</span><span>Bs ${Number(venta.total).toFixed(2)}</span></div>
+      ${venta.recibo ? `<p style="font-size:10px;text-align:center;margin-top:8px">${venta.recibo.codigo_qr}</p>` : ''}
+      <p style="text-align:center;margin-top:12px;font-size:11px">¡Gracias por su compra!</p>
+    </body></html>`
+  const w = window.open('', '_blank', 'width=340,height=560')
+  w.document.write(html)
+  w.document.close()
+  w.print()
 }
 
 onMounted(cargar)

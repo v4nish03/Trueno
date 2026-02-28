@@ -1,5 +1,14 @@
 <template>
-  <div class="pos-wrapper">
+  <div style="height: 100%">
+    <!-- Pantalla de bloqueo -->
+    <div v-if="!cajaStore.cargando && !cajaStore.abierta" class="empty-state" style="height: calc(100vh - 100px); justify-content:center">
+      <div class="empty-state-icon" style="font-size:56px; margin-bottom:16px">🔒</div>
+      <h2 style="margin:0 0 8px; font-weight:800; font-size:24px">Caja Cerrada</h2>
+      <p style="color:var(--color-muted); margin:0 0 24px">Debes abrir un turno de caja para poder realizar ventas.</p>
+      <router-link to="/" class="btn btn-primary" style="padding:12px 24px; font-size:15px; border-radius:8px">Ir al Dashboard para Abrir Turno</router-link>
+    </div>
+
+    <div v-else-if="cajaStore.abierta" class="pos-wrapper">
     <!-- Panel izquierdo: Búsqueda -->
     <div class="pos-left">
       <div style="margin-bottom: 16px">
@@ -68,9 +77,31 @@
 
     <!-- Panel derecho: Carrito -->
     <div class="pos-right">
+      <!-- Pestañas de Carritos / Clientes -->
+      <div class="cart-tabs">
+        <button
+          v-for="p in carrito.pestanas"
+          :key="p.id"
+          class="cart-tab"
+          :class="{ active: p.id === carrito.tabActivaId }"
+          @click="carrito.cambiarPestana(p.id)"
+        >
+          <span style="margin-right:4px">👤</span>
+          {{ p.nombre }}
+          <span
+            v-if="carrito.pestanas.length > 1"
+            class="close-tab"
+            @click.stop="carrito.cerrarPestana(p.id)"
+          >✕</span>
+        </button>
+        <button class="cart-tab new-tab" @click="carrito.nuevaPestana()" title="Nueva venta paralela">
+          + Nuevo
+        </button>
+      </div>
+
       <div style="margin-bottom: 14px; display:flex; align-items:center; justify-content:space-between">
         <span style="font-size:15px; font-weight:700">
-          🧾 Carrito
+          🧾 Carrito Actual
           <span v-if="carrito.cantidadItems > 0" class="badge badge-blue" style="margin-left:4px">{{ carrito.cantidadItems }}</span>
         </span>
         <button
@@ -96,10 +127,17 @@
             </div>
             <div style="font-size:11px; color:var(--color-muted)">Bs {{ fmt(item.precio_unitario) }} c/u</div>
           </div>
-          <!-- Cantidad -->
+          <!-- Cantidad: botones + input directo -->
           <div class="qty-control">
             <button class="qty-btn" @click="cambiarCantidad(item, -1)">−</button>
-            <span class="qty-value">{{ item.cantidad }}</span>
+            <input
+              class="qty-input"
+              type="number"
+              min="1"
+              :value="item.cantidad"
+              @change="e => setearCantidad(item, parseInt(e.target.value))"
+              @focus="e => e.target.select()"
+            />
             <button class="qty-btn" @click="cambiarCantidad(item, 1)">+</button>
           </div>
           <div style="font-weight:700; font-size:13px; min-width:70px; text-align:right; color:var(--color-accent)">
@@ -193,10 +231,14 @@
           Método: {{ ventaCompletada.venta.metodo_pago }}
           · Recibo: {{ ventaCompletada.recibo?.codigo_qr || '' }}
         </div>
-        <button class="btn btn-primary" style="width:100%" @click="ventaCompletada = null; focusBusqueda()">
+        <button class="btn btn-primary" style="width:100%; margin-bottom:8px" @click="imprimirTicket(ventaCompletada)">
+          🖨 Imprimir Ticket
+        </button>
+        <button class="btn btn-ghost" style="width:100%; color:var(--color-muted)" @click="ventaCompletada = null; focusBusqueda()">
           Nueva Venta
         </button>
       </div>
+    </div>
     </div>
   </div>
 </template>
@@ -205,8 +247,10 @@
 import { ref, onMounted, nextTick } from 'vue'
 import { productos as productosApi } from '@/api/productos'
 import { useCarritoStore } from '@/stores/carrito'
+import { useCajaStore } from '@/stores/caja'
 
 const carrito = useCarritoStore()
+const cajaStore = useCajaStore()
 const query = ref('')
 const resultados = ref([])
 const buscando = ref(false)
@@ -277,6 +321,16 @@ async function cambiarCantidad(item, delta) {
   }
 }
 
+async function setearCantidad(item, nuevaCantidad) {
+  if (isNaN(nuevaCantidad) || nuevaCantidad < 1) return
+  try {
+    await carrito.actualizarCantidad(item.producto_id, nuevaCantidad)
+  } catch (e) {
+    mensajeError.value = e.message
+    setTimeout(() => { mensajeError.value = '' }, 3000)
+  }
+}
+
 async function limpiarCarrito() {
   if (!confirm('¿Limpiar el carrito?')) return
   carrito.limpiar()
@@ -300,6 +354,34 @@ async function confirmarVenta() {
   }
 }
 
+function imprimirTicket(datos) {
+  const items = carrito.items.length > 0
+    ? carrito.items
+    : []  // venta ya confirmada, usamos datos del resultado
+  const lineas = datos.recibo
+    ? `<p style="font-family:monospace; font-size:11px; color:#aaa">Recibo: ${datos.recibo.codigo_qr}</p>` : ''
+  const html = `
+    <html><head><title>Ticket #${datos.venta.id}</title><style>
+      body { font-family: monospace; font-size: 13px; max-width: 300px; margin: auto; padding: 16px }
+      h2 { text-align:center; margin:0 0 4px } hr { border:1px dashed #ccc }
+      .row { display:flex; justify-content:space-between }
+      .total { font-size:16px; font-weight:bold; border-top:2px solid #000; margin-top:8px; padding-top:8px }
+    </style></head><body>
+      <h2>⚡ TRUENO MOTORS</h2>
+      <p style="text-align:center;margin:0 0 8px">Uyuni, Bolivia · ${new Date().toLocaleString('es-BO')}</p>
+      <hr/>
+      <div class="row"><b>Venta #${datos.venta.id}</b><span>${datos.venta.metodo_pago}</span></div>
+      <hr/>
+      ${lineas}
+      <div class="row total"><span>TOTAL</span><span>Bs ${Number(datos.venta.total).toFixed(2)}</span></div>
+      <p style="text-align:center;margin-top:16px;font-size:11px">¡Gracias por su compra!</p>
+    </body></html>`
+  const w = window.open('', '_blank', 'width=340,height=500')
+  w.document.write(html)
+  w.document.close()
+  w.print()
+}
+
 function focusBusqueda() {
   nextTick(() => inputBusqueda.value?.focus())
 }
@@ -312,10 +394,68 @@ onMounted(() => {
 <style scoped>
 .pos-wrapper {
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr 400px;
   gap: 20px;
   height: calc(100vh - 56px);
   overflow: hidden;
+}
+
+.cart-tabs {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  margin-bottom: 14px;
+  min-height: 38px;
+  border-bottom: 1px solid var(--color-border);
+  padding-bottom: 10px;
+}
+.cart-tabs::-webkit-scrollbar { height: 4px; }
+.cart-tabs::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+
+.cart-tab {
+  display: flex;
+  align-items: center;
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.cart-tab:hover { background: var(--color-border); }
+.cart-tab.active {
+  background: rgba(108,99,255,0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent-2);
+  box-shadow: 0 0 0 1px var(--color-accent);
+}
+.new-tab {
+  border-style: dashed;
+  color: var(--color-muted);
+  background: transparent;
+}
+.new-tab:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.close-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 8px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  font-size: 10px;
+  color: var(--color-muted);
+}
+.close-tab:hover {
+  background: var(--color-danger);
+  color: #fff;
 }
 
 .pos-left {
@@ -368,7 +508,6 @@ onMounted(() => {
 .qty-control {
   display: flex;
   align-items: center;
-  gap: 0;
   background: var(--color-surface-2);
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -388,12 +527,20 @@ onMounted(() => {
   transition: background 0.1s;
 }
 .qty-btn:hover { background: var(--color-border); }
-.qty-value {
-  min-width: 28px;
-  text-align: center;
+.qty-input {
+  width: 42px;
+  background: none;
+  border: none;
+  color: var(--color-text);
   font-size: 13px;
   font-weight: 700;
+  text-align: center;
+  padding: 0;
+  outline: none;
+  -moz-appearance: textfield;
 }
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 
 .resumen-venta {
   max-height: 200px;

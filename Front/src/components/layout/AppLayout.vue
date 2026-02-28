@@ -15,9 +15,15 @@
 import { onMounted, onUnmounted } from 'vue'
 import AppSidebar from './AppSidebar.vue'
 import { useAlertasStore } from '@/stores/alertas'
+import { useCajaStore } from '@/stores/caja'
 
 const alertasStore = useAlertasStore()
-onMounted(() => alertasStore.iniciar())
+const cajaStore = useCajaStore()
+
+onMounted(() => {
+  alertasStore.iniciar()
+  cajaStore.checkEstado()
+})
 onUnmounted(() => alertasStore.detener())
 </script>
 
