@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 
-from integrations.telegram_bot import enviar_mensaje
+from services.telegram_service import enviar_alertas_sync
 from models.producto import Producto
 from models.recibo import Recibo
 from models.venta import Venta
@@ -20,15 +20,33 @@ def productos_con_ventas_sin_stock(db: Session):
     ).all()
 
 
-def _fmt_fecha(fecha: datetime | str | None) -> str:
-    if not fecha:
-        return "N/D"
-    if isinstance(fecha, str):
-        return fecha
+def productos_por_reponer(db: Session):
+    """
+    Vista especial: "Productos por reponer"
+    Productos que necesitan atención urgente:
+    - Stock <= stock_minimo (bajo stock)
+    - O con ventas_sin_stock > 0 (ventas pendientes)
+    """
+    from sqlalchemy import or_
+    
+    return db.query(Producto).filter(
+        or_(
+            Producto.stock <= Producto.stock_minimo,
+            Producto.ventas_sin_stock > 0
+        )
+    ).order_by(
+        # Prioridad: sin stock primero, luego bajo stock, luego con ventas pendientes
+        Producto.stock.asc(),
+        Producto.ventas_sin_stock.desc()
+    ).all()
+
+
+
 def _fmt_fecha(fecha: datetime | None) -> str:
     if not fecha:
         return "N/D"
     return fecha.strftime("%Y-%m-%d %H:%M:%S")
+
 
 
 def enviar_alertas(db: Session):
@@ -52,7 +70,9 @@ def enviar_alertas(db: Session):
             )
 
     if mensajes:
-        enviar_mensaje("\n".join(mensajes))
+        resultado = enviar_alertas_sync(db, "\n".join(mensajes))
+        return resultado
+    return {"exitos": [], "fallos": [], "mensaje": "No hay alertas para enviar"}
 
 
 def enviar_alerta_venta_detallada(
@@ -108,4 +128,4 @@ def enviar_alerta_venta_detallada(
             vistos.add(p.id)
             lines.append(f"• {p.nombre} (stock: {p.stock}, mínimo: {p.stock_minimo})")
 
-    return enviar_mensaje("\n".join(lines))
+    return enviar_alertas_sync(db, "\n".join(lines))

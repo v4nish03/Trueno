@@ -1,5 +1,4 @@
 # ========== test_alertas.py ==========
-import pytest
 
 
 class TestAlertas:
@@ -15,7 +14,7 @@ class TestAlertas:
         data = response.json()
         assert data["total"] >= 1
 
-    def test_alertas_ventas_sin_stock(self, client, producto_sin_stock):
+    def test_alertas_ventas_sin_stock(self, client, caja_abierta, producto_sin_stock):
         """Debería detectar ventas sin stock"""
         # Hacer una venta sin stock
         venta = client.post("/ventas/abrir").json()
@@ -34,17 +33,17 @@ class TestAlertas:
         data = response.json()
         assert data["total"] >= 1
 
-    def test_alerta_detallada_incluye_recibo_y_fecha(self, client, producto_sin_stock, monkeypatch):
+    def test_alerta_detallada_incluye_recibo_y_fecha(self, client, caja_abierta, producto_sin_stock, monkeypatch):
         """La alerta detallada debe incluir venta, recibo y fecha"""
         from services import alertas_service
 
         capturado = {"texto": None}
 
-        def fake_send(texto):
+        def fake_send(db, texto):
             capturado["texto"] = texto
-            return True
+            return {"exitos": [], "fallos": []}
 
-        monkeypatch.setattr(alertas_service, "enviar_mensaje", fake_send)
+        monkeypatch.setattr(alertas_service, "enviar_alertas_sync", fake_send)
 
         venta = client.post("/ventas/abrir").json()
         client.post(
@@ -69,7 +68,7 @@ class TestAlertas:
         assert "Producto Sin Stock" in capturado["texto"]
 
 
-    def test_cerrar_venta_no_falla_si_alerta_detallada_falla(self, client, producto_sin_stock, monkeypatch):
+    def test_cerrar_venta_no_falla_si_alerta_detallada_falla(self, client, caja_abierta, producto_sin_stock, monkeypatch):
         """La venta debe completarse aunque falle el envío de alerta detallada"""
         from services import alertas_service
 

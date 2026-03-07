@@ -19,6 +19,7 @@ class MetodoPagoEnum(enum.Enum):
 class EstadoVentaEnum(enum.Enum):
     abierta = "abierta"
     completa = "completa"
+    parcial = "parcial"
     anulada = "anulada"
 
 

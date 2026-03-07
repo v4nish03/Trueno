@@ -4,7 +4,7 @@ import pytest
 class TestCrearVenta:
     """Tests para crear y gestionar ventas"""
 
-    def test_abrir_venta(self, client):
+    def test_abrir_venta(self, client, caja_abierta):
         """Debería crear una venta en estado abierto"""
         response = client.post("/ventas/abrir")
         assert response.status_code == 200
@@ -12,7 +12,7 @@ class TestCrearVenta:
         assert "venta_id" in data
         assert data["estado"] == "abierta"
 
-    def test_agregar_producto_a_venta(self, client, producto_ejemplo):
+    def test_agregar_producto_a_venta(self, client, caja_abierta, producto_ejemplo):
         """Debería agregar productos a venta abierta"""
         # Abrir venta
         venta = client.post("/ventas/abrir").json()
@@ -31,7 +31,7 @@ class TestCrearVenta:
         assert data["cantidad"] == 3
         assert data["producto_id"] == producto_ejemplo["id"]
 
-    def test_agregar_mismo_producto_suma_cantidad(self, client, producto_ejemplo):
+    def test_agregar_mismo_producto_suma_cantidad(self, client, caja_abierta, producto_ejemplo):
         """Debería sumar cantidad si agregas el mismo producto"""
         venta = client.post("/ventas/abrir").json()
         
@@ -62,7 +62,7 @@ class TestCrearVenta:
 
 
 
-    def test_no_agregar_producto_con_cantidad_invalida(self, client, producto_ejemplo):
+    def test_no_agregar_producto_con_cantidad_invalida(self, client, caja_abierta, producto_ejemplo):
         """No debería permitir cantidad <= 0 por validación de schema"""
         venta = client.post("/ventas/abrir").json()
 
@@ -77,7 +77,7 @@ class TestCrearVenta:
 
         assert response.status_code == 422
 
-    def test_no_agregar_producto_con_precio_invalido(self, client, producto_ejemplo):
+    def test_no_agregar_producto_con_precio_invalido(self, client, caja_abierta, producto_ejemplo):
         """No debería permitir precio <= 0 por validación de schema"""
         venta = client.post("/ventas/abrir").json()
 
@@ -116,7 +116,7 @@ class TestCerrarVenta:
         stock_despues = client.get(f"/productos/{producto_ejemplo['id']}").json()["stock"]
         assert stock_despues < stock_antes
 
-    def test_cerrar_venta_sin_stock(self, client, producto_sin_stock):
+    def test_cerrar_venta_sin_stock(self, client, caja_abierta, producto_sin_stock):
         """Debería detectar venta sin stock"""
         # Abrir venta
         venta = client.post("/ventas/abrir").json()
@@ -152,7 +152,7 @@ class TestCerrarVenta:
 
         assert response.status_code == 422
 
-    def test_no_cerrar_venta_sin_productos(self, client):
+    def test_no_cerrar_venta_sin_productos(self, client, caja_abierta):
         """NO debería cerrar venta vacía"""
         venta = client.post("/ventas/abrir").json()
         
@@ -182,7 +182,7 @@ class TestGestionVentas:
         data = response.json()
         assert len(data) >= 1
 
-    def test_eliminar_producto_de_venta_abierta(self, client, producto_ejemplo):
+    def test_eliminar_producto_de_venta_abierta(self, client, caja_abierta, producto_ejemplo):
         """Debería eliminar productos de venta abierta"""
         # Crear venta y agregar producto
         venta = client.post("/ventas/abrir").json()

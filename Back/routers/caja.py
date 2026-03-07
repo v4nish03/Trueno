@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from sqlalchemy.sql import func
 from pydantic import BaseModel
@@ -7,6 +7,7 @@ from datetime import datetime
 
 from database import get_db
 from models.caja import TurnoCaja, EstadoTurnoEnum
+from routers.sistema import generar_y_enviar_backup
 from models.venta import Venta, EstadoVentaEnum, MetodoPagoEnum
 
 router = APIRouter()
@@ -63,7 +64,7 @@ def abrir_caja(req: AbrirCajaRequest, db: Session = Depends(get_db)):
     return nuevo_turno
 
 @router.post("/cerrar")
-def cerrar_caja(db: Session = Depends(get_db)):
+def cerrar_caja(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     turno = db.query(TurnoCaja).filter(TurnoCaja.estado == EstadoTurnoEnum.abierto).first()
     if not turno:
         raise HTTPException(status_code=400, detail="No hay ningun turno abierto.")
@@ -71,4 +72,8 @@ def cerrar_caja(db: Session = Depends(get_db)):
     turno.estado = EstadoTurnoEnum.cerrado
     turno.fecha_cierre = func.now()
     db.commit()
-    return {"mensaje": "Caja cerrada correctamente", "turno_id": turno.id}
+    
+    # 🚀 Disparar backup automático al cerrar el turno
+    background_tasks.add_task(generar_y_enviar_backup)
+    
+    return {"mensaje": "Caja cerrada correctamente. Backup iniciado.", "turno_id": turno.id}

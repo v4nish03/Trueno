@@ -50,7 +50,7 @@ class TestReportes:
         data = response.json()
         assert isinstance(data, list)
 
-    def test_reporte_ventas_sin_stock(self, client, producto_sin_stock):
+    def test_reporte_ventas_sin_stock(self, client, caja_abierta, producto_sin_stock):
         """Debería reportar ventas sin stock"""
         # Crear venta sin stock
         venta = client.post("/ventas/abrir").json()

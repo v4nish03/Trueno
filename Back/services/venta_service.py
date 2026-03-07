@@ -145,74 +145,86 @@ def agregar_producto_a_venta(
 
 
 def cerrar_venta(db: Session, venta_id: int, metodo_pago: MetodoPagoEnum):
+    """
+    Cierra una venta abierta, actualiza stock y registra movimientos.
+    Control transaccional mejorado para evitar inconsistencias.
+    """
     try:
-        venta = db.query(Venta).filter(Venta.id == venta_id).with_for_update().first()
-        if not venta:
-            raise Exception("Venta no encontrada")
-        if venta.estado != EstadoVentaEnum.abierta:
-            raise Exception("La venta ya está cerrada")
+        # Iniciar transacción explícita
+        with db.begin():
+            # Validar venta y bloquear para concurrencia
+            venta = db.query(Venta).filter(Venta.id == venta_id).with_for_update().first()
+            if not venta:
+                raise Exception("Venta no encontrada")
+            if venta.estado != EstadoVentaEnum.abierta:
+                raise Exception("La venta ya está cerrada")
 
-        productos_venta = db.query(VentaProducto).filter(VentaProducto.venta_id == venta_id).all()
-        if not productos_venta:
-            raise Exception("No se puede cerrar una venta sin productos")
+            productos_venta = db.query(VentaProducto).filter(VentaProducto.venta_id == venta_id).all()
+            if not productos_venta:
+                raise Exception("No se puede cerrar una venta sin productos")
 
-        producto_ids = [vp.producto_id for vp in productos_venta]
-        productos = (
-            db.query(Producto)
-            .filter(Producto.id.in_(producto_ids))
-            .with_for_update()
-            .all()
-        )
-        productos_map = {p.id: p for p in productos}
-
-        total = 0.0
-        venta_sin_stock = False
-        sin_stock_producto_ids: list[int] = []
-
-        for vp in productos_venta:
-            producto = productos_map.get(vp.producto_id)
-            if not producto:
-                raise Exception(f"Producto {vp.producto_id} no encontrado")
-
-            if producto.stock >= vp.cantidad:
-                producto.stock -= vp.cantidad
-            else:
-                venta_sin_stock = True
-                producto.ventas_sin_stock += vp.cantidad
-                sin_stock_producto_ids.append(producto.id)
-
-            registrar_movimiento(
-                db,
-                producto_id=producto.id,
-                tipo=TipoMovimientoEnum.salida,
-                motivo=MotivoMovimientoEnum.venta,
-                cantidad=vp.cantidad,
-                referencia_id=venta.id,
+            # Bloquear productos para evitar concurrencia
+            producto_ids = [vp.producto_id for vp in productos_venta]
+            productos = (
+                db.query(Producto)
+                .filter(Producto.id.in_(producto_ids))
+                .with_for_update()
+                .all()
             )
+            productos_map = {p.id: p for p in productos}
 
-            total += vp.cantidad * vp.precio_unitario
+            total = 0.0
+            venta_sin_stock = False
+            sin_stock_producto_ids: list[int] = []
 
-        venta.total = round(total, 2)
-        venta.metodo_pago = metodo_pago
-        venta.tipo = TipoVentaEnum.sin_stock if venta_sin_stock else TipoVentaEnum.normal
-        venta.estado = EstadoVentaEnum.completa
+            # Procesar cada producto
+            for vp in productos_venta:
+                producto = productos_map.get(vp.producto_id)
+                if not producto:
+                    raise Exception(f"Producto {vp.producto_id} no encontrado")
 
-        db.commit()
+                if producto.stock >= vp.cantidad:
+                    # Stock suficiente - descontar
+                    producto.stock -= vp.cantidad
+                else:
+                    # Stock insuficiente - marcar como venta sin stock
+                    venta_sin_stock = True
+                    producto.ventas_sin_stock += vp.cantidad
+                    sin_stock_producto_ids.append(producto.id)
+
+                # Registrar movimiento de salida
+                registrar_movimiento(
+                    db,
+                    producto_id=producto.id,
+                    tipo=TipoMovimientoEnum.salida,
+                    motivo=MotivoMovimientoEnum.venta,
+                    cantidad=vp.cantidad,
+                    referencia_id=venta.id,
+                )
+
+                total += vp.cantidad * vp.precio_unitario
+
+            # Actualizar venta
+            venta.total = round(total, 2)
+            venta.metodo_pago = metodo_pago
+            venta.tipo = TipoVentaEnum.sin_stock if venta_sin_stock else TipoVentaEnum.normal
+            venta.estado = EstadoVentaEnum.completa
+
+        # La transacción ya hizo commit automáticamente con db.begin()
         db.refresh(venta)
 
-        return venta, sin_stock_producto_ids
+        # Enviar alertas si hubo ventas sin stock (fuera de la transacción principal)
         if venta_sin_stock:
             try:
                 from services.alertas_service import enviar_alertas
-
                 enviar_alertas(db)
             except Exception as e:
                 print(f"Error enviando alertas: {e}")
 
-        return venta
+        return venta, sin_stock_producto_ids
 
     except Exception:
-        db.rollback()
+        # db.begin() ya maneja el rollback automáticamente
         raise
 
 

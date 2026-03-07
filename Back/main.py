@@ -5,8 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from database import Base, engine
 import os
 
-from routers import productos, ventas, alertas, reportes, devoluciones, movimientos, caja, sistema
-import models.caja
+from routers import productos, ventas, alertas, reportes, devoluciones, movimientos, caja, sistema, configuracion
+import models.caja  # noqa: F401 (Necesario para que SQLAlchemy registre las tablas)
+import models.configuracion  # noqa: F401 (Necesario para que SQLAlchemy registre las tablas)
 
 # Crear todas las tablas al iniciar
 Base.metadata.create_all(bind=engine)
@@ -46,10 +47,18 @@ app.include_router(reportes.router,     prefix="/reportes",     tags=["Reportes"
 app.include_router(movimientos.router,  prefix="/movimientos",  tags=["Movimientos"])
 app.include_router(caja.router,         prefix="/caja",         tags=["Caja"])
 app.include_router(sistema.router,      prefix="/sistema",      tags=["Sistema"])
+app.include_router(configuracion.router, prefix="/configuracion", tags=["Configuración"])
 
 
 # ✅ Servir el Frontend Construido (Producción)
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Front", "dist")
+
+# Prefijos de API que NO deben ser interceptados por el catch-all de la SPA
+API_PREFIXES = {
+    "productos", "ventas", "devoluciones", "alertas",
+    "reportes", "movimientos", "caja", "sistema",
+    "configuracion", "health", "docs", "openapi.json", "redoc"
+}
 
 if os.path.isdir(frontend_path):
     # Primero montar estáticos principales
@@ -58,15 +67,16 @@ if os.path.isdir(frontend_path):
     # Catch-all para que Vue Router controle la navegación (Single Page Application)
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_vue_spa(full_path: str):
-        # Ignorar peticiones a las rutas exclusivas de API o docs si no emparejaron
-        if full_path.startswith("docs") or full_path.startswith("openapi.json"):
-            return {"detail": "Not Found"}
-            
+        # Excluir rutas de API para que FastAPI las maneje correctamente
+        first_segment = full_path.split("/")[0]
+        if first_segment in API_PREFIXES:
+            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+
         file_path = os.path.join(frontend_path, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
         
-        # Cualquier otra ruta devuelve el index.html
+        # Cualquier otra ruta devuelve el index.html (Vue Router)
         return FileResponse(os.path.join(frontend_path, "index.html"))
 else:
     @app.get("/", tags=["Sistema"])

@@ -79,11 +79,19 @@ def producto_sin_stock(client):
 
 
 @pytest.fixture
-def venta_abierta(client, producto_ejemplo):
+def caja_abierta(client):
+    """Abre un turno de caja para tests que necesiten crear ventas"""
+    response = client.post("/caja/abrir", json={"monto_inicial": 100.0})
+    assert response.status_code == 200, f"No se pudo abrir caja: {response.text}"
+    return response.json()
+
+
+@pytest.fixture
+def venta_abierta(client, caja_abierta, producto_ejemplo):
     """Crea una venta abierta con un producto"""
     # Abrir venta
     response = client.post("/ventas/abrir")
-    assert response.status_code == 200
+    assert response.status_code == 200, f"No se pudo abrir venta: {response.text}"
     venta = response.json()
     
     # Agregar producto

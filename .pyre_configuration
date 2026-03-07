@@ -1,0 +1,9 @@
+{
+  "source_directories": [
+    "Back"
+  ],
+  "search_path": [
+    "Back/.venv/lib/python3.14/site-packages",
+    "Back"
+  ]
+}
