@@ -2,7 +2,7 @@
   <aside class="sidebar">
     <!-- Logo -->
     <div class="sidebar-logo">
-      <div class="logo-icon">⚡</div>
+      <img src="/assets/img/logo.jpeg" alt="Trueno Motors" class="logo-image" />
       <div class="logo-text">
         <span class="logo-name">Trueno</span>
         <span class="logo-sub">Motors</span>
@@ -34,6 +34,7 @@
     <div class="sidebar-footer">
       <div class="status-dot"></div>
       <span>Sistema activo</span>
+      <img src="/assets/img/alex.jpeg" alt="Alex" class="owner-logo" />
     </div>
   </aside>
 </template>
@@ -72,6 +73,12 @@ const navItems = computed(() => [
   padding: 4px 8px 16px;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: 8px;
+}
+.logo-image {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
 }
 .logo-icon {
   font-size: 24px;
@@ -143,9 +150,9 @@ const navItems = computed(() => [
   color: var(--color-text);
 }
 .nav-item.router-link-active {
-  background: rgba(108, 99, 255, 0.12);
+  background: rgba(46, 204, 64, 0.12);
   color: var(--color-accent);
-  border: 1px solid rgba(108,99,255,0.2);
+  border: 1px solid rgba(46, 204, 64, 0.25);
 }
 .nav-icon { font-size: 16px; }
 .nav-label { flex: 1; }
@@ -168,6 +175,13 @@ const navItems = computed(() => [
   border-top: 1px solid var(--color-border);
   font-size: 11px;
   color: var(--color-muted);
+}
+.owner-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  margin-left: auto;
 }
 .status-dot {
   width: 6px;

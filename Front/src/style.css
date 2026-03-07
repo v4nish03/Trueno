@@ -1,24 +1,46 @@
 @import "tailwindcss";
 
 :root {
-  --color-bg: #0f1117;
-  --color-surface: #1a1d27;
-  --color-surface-2: #22263a;
-  --color-border: #2d3254;
-  --color-accent: #6c63ff;
-  --color-accent-2: #00d4ff;
+  /* Paleta Trueno Motors Uyuni — Negro + Verde Eléctrico */
+  --color-bg: #080c09;
+  /* Negro puro de fondo */
+  --color-surface: #0d1a0f;
+  /* Verde muy oscuro superficies */
+  --color-surface-2: #122115;
+  /* Verde oscuro capas */
+  --color-border: #1c3d22;
+  /* Borde verde oscuro */
+  --color-accent: #2ecc40;
+  /* Verde eléctrico Trueno (logo) */
+  --color-accent-2: #5de86b;
+  /* Verde claro hover */
   --color-success: #22c55e;
+  /* Verde éxito */
   --color-warning: #f59e0b;
+  /* Amarillo advertencia */
   --color-danger: #ef4444;
-  --color-text: #e2e8f0;
-  --color-muted: #64748b;
+  /* Rojo peligro */
+  --color-text: #f0f4f0;
+  /* Blanco ligeramente verdoso */
+  --color-muted: #7da882;
+  /* Gris verdoso muted */
+
+  /* Colores de marca */
+  --color-primary: #2ecc40;
+  /* Verde Trueno Motors principal */
+  --color-secondary: #122115;
+  /* Fondo oscuro secundario */
+  --color-tertiary: #0d1a0f;
+  /* Terciario */
 }
 
 * {
   box-sizing: border-box;
 }
 
-html, body, #app {
+html,
+body,
+#app {
   height: 100%;
   margin: 0;
   padding: 0;
@@ -33,10 +55,23 @@ body {
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: var(--color-surface); }
-::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--color-accent); }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-accent);
+}
 
 /* Cards */
 .card {
@@ -65,34 +100,52 @@ body {
   background: var(--color-accent);
   color: white;
 }
-.btn-primary:hover { background: #5a53e0; transform: translateY(-1px); }
+
+.btn-primary:hover {
+  background: #5a53e0;
+  transform: translateY(-1px);
+}
 
 .btn-secondary {
   background: var(--color-surface-2);
   color: var(--color-text);
   border: 1px solid var(--color-border);
 }
-.btn-secondary:hover { background: var(--color-border); }
+
+.btn-secondary:hover {
+  background: var(--color-border);
+}
 
 .btn-success {
   background: var(--color-success);
   color: white;
 }
-.btn-success:hover { background: #16a34a; }
+
+.btn-success:hover {
+  background: #16a34a;
+}
 
 .btn-danger {
   background: transparent;
   color: var(--color-danger);
   border: 1px solid var(--color-danger);
 }
-.btn-danger:hover { background: var(--color-danger); color: white; }
+
+.btn-danger:hover {
+  background: var(--color-danger);
+  color: white;
+}
 
 .btn-ghost {
   background: transparent;
   color: var(--color-muted);
   border: 1px solid transparent;
 }
-.btn-ghost:hover { color: var(--color-text); background: var(--color-surface-2); }
+
+.btn-ghost:hover {
+  color: var(--color-text);
+  background: var(--color-surface-2);
+}
 
 .btn-sm {
   padding: 5px 10px;
@@ -112,8 +165,14 @@ body {
   transition: border-color 0.15s;
   width: 100%;
 }
-.input:focus { border-color: var(--color-accent); }
-.input::placeholder { color: var(--color-muted); }
+
+.input:focus {
+  border-color: var(--color-accent);
+}
+
+.input::placeholder {
+  color: var(--color-muted);
+}
 
 select.input {
   cursor: pointer;
@@ -125,13 +184,16 @@ select.input {
   border-radius: 10px;
   border: 1px solid var(--color-border);
 }
+
 table {
   width: 100%;
   border-collapse: collapse;
 }
+
 thead {
   background: var(--color-surface-2);
 }
+
 th {
   padding: 10px 14px;
   text-align: left;
@@ -142,13 +204,20 @@ th {
   color: var(--color-muted);
   border-bottom: 1px solid var(--color-border);
 }
+
 td {
   padding: 10px 14px;
   border-bottom: 1px solid var(--color-border);
   font-size: 13px;
 }
-tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: rgba(108, 99, 255, 0.05);
+}
 
 /* Badges */
 .badge {
@@ -160,24 +229,49 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   font-size: 11px;
   font-weight: 600;
 }
-.badge-green { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
-.badge-yellow { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-.badge-red { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-.badge-blue { background: rgba(108, 99, 255, 0.15); color: #6c63ff; }
-.badge-gray { background: rgba(100, 116, 139, 0.15); color: #64748b; }
-.badge-cyan { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+
+.badge-green {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+}
+
+.badge-yellow {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.badge-red {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.badge-blue {
+  background: rgba(108, 99, 255, 0.15);
+  color: #6c63ff;
+}
+
+.badge-gray {
+  background: rgba(100, 116, 139, 0.15);
+  color: #64748b;
+}
+
+.badge-cyan {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+}
 
 /* Modal */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: 20px;
 }
+
 .modal {
   background: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -188,7 +282,10 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   max-height: 90vh;
   overflow-y: auto;
 }
-.modal-lg { max-width: 720px; }
+
+.modal-lg {
+  max-width: 720px;
+}
 
 .modal-header {
   display: flex;
@@ -196,6 +293,7 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   justify-content: space-between;
   margin-bottom: 20px;
 }
+
 .modal-title {
   font-size: 16px;
   font-weight: 700;
@@ -206,6 +304,7 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
 .form-group {
   margin-bottom: 14px;
 }
+
 .form-label {
   display: block;
   font-size: 12px;
@@ -215,6 +314,7 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
+
 .form-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
@@ -230,17 +330,35 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   position: relative;
   overflow: hidden;
 }
+
 .kpi-card::before {
   content: '';
   position: absolute;
-  top: 0; left: 0; right: 0;
+  top: 0;
+  left: 0;
+  right: 0;
   height: 2px;
 }
-.kpi-card.accent::before { background: var(--color-accent); }
-.kpi-card.success::before { background: var(--color-success); }
-.kpi-card.warning::before { background: var(--color-warning); }
-.kpi-card.danger::before { background: var(--color-danger); }
-.kpi-card.cyan::before { background: var(--color-accent-2); }
+
+.kpi-card.accent::before {
+  background: var(--color-accent);
+}
+
+.kpi-card.success::before {
+  background: var(--color-success);
+}
+
+.kpi-card.warning::before {
+  background: var(--color-warning);
+}
+
+.kpi-card.danger::before {
+  background: var(--color-danger);
+}
+
+.kpi-card.cyan::before {
+  background: var(--color-accent-2);
+}
 
 .kpi-label {
   font-size: 11px;
@@ -250,12 +368,14 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   color: var(--color-muted);
   margin-bottom: 8px;
 }
+
 .kpi-value {
   font-size: 28px;
   font-weight: 800;
   line-height: 1;
   margin-bottom: 4px;
 }
+
 .kpi-sub {
   font-size: 11px;
   color: var(--color-muted);
@@ -268,6 +388,7 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   justify-content: space-between;
   margin-bottom: 16px;
 }
+
 .section-title {
   font-size: 15px;
   font-weight: 700;
@@ -278,12 +399,14 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
 .page-header {
   margin-bottom: 24px;
 }
+
 .page-title {
   font-size: 22px;
   font-weight: 800;
   color: var(--color-text);
   margin-bottom: 4px;
 }
+
 .page-subtitle {
   font-size: 13px;
   color: var(--color-muted);
@@ -299,16 +422,19 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   font-size: 13px;
   margin-bottom: 12px;
 }
+
 .alert-warning {
   background: rgba(245, 158, 11, 0.1);
   border: 1px solid rgba(245, 158, 11, 0.3);
   color: #f59e0b;
 }
+
 .alert-danger {
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
   color: #ef4444;
 }
+
 .alert-success {
   background: rgba(34, 197, 94, 0.1);
   border: 1px solid rgba(34, 197, 94, 0.3);
@@ -324,13 +450,19 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
 
 /* Loading */
 .spinner {
-  width: 20px; height: 20px;
+  width: 20px;
+  height: 20px;
   border: 2px solid var(--color-border);
   border-top-color: var(--color-accent);
   border-radius: 50%;
   animation: spin 0.6s linear infinite;
 }
-@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
 
 .loading-center {
   display: flex;
@@ -348,8 +480,15 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   padding: 48px 20px;
   color: var(--color-muted);
 }
-.empty-state-icon { font-size: 40px; margin-bottom: 12px; }
-.empty-state-text { font-size: 14px; }
+
+.empty-state-icon {
+  font-size: 40px;
+  margin-bottom: 12px;
+}
+
+.empty-state-text {
+  font-size: 14px;
+}
 
 /* POS specific */
 .pos-search-container {
@@ -367,8 +506,14 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
   border-bottom: 1px solid var(--color-border);
   transition: background 0.1s;
 }
-.cart-item:hover { background: var(--color-surface-2); }
-.cart-item:last-child { border-bottom: none; }
+
+.cart-item:hover {
+  background: var(--color-surface-2);
+}
+
+.cart-item:last-child {
+  border-bottom: none;
+}
 
 .cart-total {
   background: linear-gradient(135deg, var(--color-accent), var(--color-accent-2));
@@ -381,11 +526,24 @@ tbody tr:hover { background: rgba(108, 99, 255, 0.05); }
 }
 
 /* Transitions */
-.fade-enter-active, .fade-leave-active { transition: opacity 0.2s; }
-.fade-enter-from, .fade-leave-to { opacity: 0; }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s;
+}
 
-.slide-up-enter-active { transition: all 0.25s ease-out; }
-.slide-up-enter-from { transform: translateY(20px); opacity: 0; }
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+
+.slide-up-enter-active {
+  transition: all 0.25s ease-out;
+}
+
+.slide-up-enter-from {
+  transform: translateY(20px);
+  opacity: 0;
+}
 
 /* Number input without spinners */
 input[type=number]::-webkit-inner-spin-button,

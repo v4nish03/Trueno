@@ -1,10 +1,10 @@
 import client from './client'
 
 export const productos = {
-    listar: (params = {}) => client.get('/productos', { params }),
+    listar: (params = {}) => client.get('/productos/', { params }),
     obtener: (id) => client.get(`/productos/${id}`),
     obtenerPorCodigo: (codigo) => client.get(`/productos/codigo/${codigo}`),
-    crear: (data) => client.post('/productos', data),
+    crear: (data) => client.post('/productos/', data),
     actualizar: (id, data) => client.put(`/productos/${id}`, data),
     descontinuar: (id) => client.delete(`/productos/${id}`),
     reactivar: (id) => client.post(`/productos/${id}/reactivar`),
