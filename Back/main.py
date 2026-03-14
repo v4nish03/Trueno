@@ -27,14 +27,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ✅ Manejo global de errores inesperados
+# ✅ Manejo global de errores inesperados persistente y proactivo
 @app.exception_handler(Exception)
 async def generic_exception_handler(request: Request, exc: Exception):
+    import traceback
+    import asyncio
+    import datetime
+    from services.telegram_service import telegram_service
+    
+    fecha = datetime.datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    tb_str = traceback.format_exc()
+    
+    # Mensaje formateado para Telegram (HTML parse mode)
+    error_msg = f"❌ <b>CRASH INTERNO TRUENO MOTORS</b> ❌\n\n"
+    error_msg += f"<b>Fecha:</b> {fecha}\n"
+    error_msg += f"<b>Ruta:</b> <code>{request.method} {request.url.path}</code>\n"
+    error_msg += f"<b>Motivo:</b> {str(exc)}\n\n"
+    error_msg += f"<b>Traza (resumen):</b>\n<pre>{tb_str[-1200:]}</pre>"
+    
+    # 1. Escribir en log local persistentemente
+    try:
+        with open("error_log.txt", "a", encoding="utf-8") as f:
+            f.write(f"\n[{fecha}] ERROR {request.method} {request.url.path}\n")
+            f.write(tb_str)
+            f.write("="*50 + "\n")
+    except Exception:
+        pass
+        
+    # 2. Notificar a Telegram (Asíncrono en background)
+    try:
+        asyncio.create_task(telegram_service.enviar_error_sistema(error_msg))
+    except Exception:
+        pass
+
     return JSONResponse(
         status_code=500,
         content={
-            "error": "Error interno del servidor",
-            "detalle": str(exc)
+            "error": "Fallo crítico en el servidor",
+            "detalle": "Ocurrió un error no manejado. Se ha notificado al Telegram de los dueños y se guardó en el log de errores."
         }
     )
 

@@ -23,7 +23,7 @@
           v-model="query"
           class="input"
           style="border:none; background:transparent; font-size:16px; padding: 10px 14px"
-          placeholder="🔍  Nombre o código del producto..."
+          placeholder="🔍  Nombre o código del producto... (F2)"
           @keydown.enter="seleccionarPrimero"
           @input="buscar"
           autofocus

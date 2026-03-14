@@ -20,6 +20,7 @@
           class="input"
           placeholder="🔍  Buscar por nombre o código..."
           @input="filtrar"
+          autofocus
         />
         <select v-model="filtroStock" class="input" style="width: 150px" @change="filtrar">
           <option value="">Todos</option>

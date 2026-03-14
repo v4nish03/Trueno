@@ -109,6 +109,18 @@ class TelegramService:
         logger.info(f"📊 Alertas enviadas: {len(exitos)} éxitos, {len(fallos)} fallos")
         return {"exitos": exitos, "fallos": fallos, "total_enviados": len(exitos) + len(fallos)}
     
+    async def enviar_error_sistema(self, mensaje: str) -> bool:
+        """Enviar un registro de caída o error crítico por Telegram al dueño (Chat ID Backup)"""
+        token = self._obtener_configuracion_env("TELEGRAM_TOKEN")
+        chat_id_backup = self._obtener_configuracion_env("TELEGRAM_CHAT_ID_BACKUP")
+        habilitado_env = self._obtener_configuracion_env("TELEGRAM_HABILITADO", "false")
+        
+        if habilitado_env.lower() != "true" or not token or not chat_id_backup:
+            return False
+            
+        # Utilizamos el chat ID de backup pues suele ser el del Administrador/Dueño de la red de Trueno Motors
+        return await self._enviar_mensaje_individual(token, chat_id_backup, mensaje)
+
     async def enviar_backup(self, db: Session, mensaje: str) -> bool:
         """
         Enviar backup a un solo número de Telegram.
