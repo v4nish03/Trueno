@@ -12,11 +12,11 @@
     <!-- Alertas globales -->
     <div v-if="alertasStore.totalStockBajo > 0 || alertasStore.totalSinStock > 0" class="sidebar-alerts">
       <div v-if="alertasStore.totalStockBajo > 0" class="sidebar-alert warning">
-        <span>⚠️</span>
+        <AlertTriangle :size="14" />
         <span>{{ alertasStore.totalStockBajo }} con stock bajo</span>
       </div>
       <div v-if="alertasStore.totalSinStock > 0" class="sidebar-alert danger">
-        <span>🚨</span>
+        <AlertCircle :size="14" />
         <span>{{ alertasStore.totalSinStock }} sin stock</span>
       </div>
     </div>
@@ -24,7 +24,7 @@
     <!-- Navigation -->
     <nav class="sidebar-nav">
       <router-link v-for="item in navItems" :key="item.to" :to="item.to" class="nav-item">
-        <span class="nav-icon">{{ item.icon }}</span>
+        <span class="nav-icon"><component :is="item.icon" :size="17" :stroke-width="1.8" /></span>
         <span class="nav-label">{{ item.label }}</span>
         <span v-if="item.badge && item.badge > 0" class="nav-badge">{{ item.badge }}</span>
       </router-link>
@@ -42,15 +42,24 @@
 <script setup>
 import { computed } from 'vue'
 import { useAlertasStore } from '@/stores/alertas'
+import {
+  LayoutDashboard,
+  ShoppingCart,
+  Package,
+  BarChart3,
+  DollarSign,
+  AlertTriangle,
+  AlertCircle
+} from 'lucide-vue-next'
 
 const alertasStore = useAlertasStore()
 
 const navItems = computed(() => [
-  { to: '/dashboard', icon: '🏠', label: 'Dashboard' },
-  { to: '/pos', icon: '🛒', label: 'Punto de Venta' },
-  { to: '/productos', icon: '📦', label: 'Productos' },
-  { to: '/movimientos', icon: '📊', label: 'Movimientos' },
-  { to: '/ventas', icon: '💰', label: 'Ventas', badge: 0 },
+  { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/pos',       icon: ShoppingCart,    label: 'Punto de Venta' },
+  { to: '/productos', icon: Package,          label: 'Productos' },
+  { to: '/movimientos', icon: BarChart3,      label: 'Movimientos' },
+  { to: '/ventas',    icon: DollarSign,       label: 'Ventas', badge: 0 },
 ])
 </script>
 
@@ -79,10 +88,6 @@ const navItems = computed(() => [
   height: 32px;
   border-radius: 6px;
   object-fit: cover;
-}
-.logo-icon {
-  font-size: 24px;
-  line-height: 1;
 }
 .logo-name {
   display: block;
@@ -154,7 +159,12 @@ const navItems = computed(() => [
   color: var(--color-accent);
   border: 1px solid rgba(46, 204, 64, 0.25);
 }
-.nav-icon { font-size: 16px; }
+.nav-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+}
 .nav-label { flex: 1; }
 .nav-badge {
   background: var(--color-danger);

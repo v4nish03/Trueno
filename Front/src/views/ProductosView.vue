@@ -92,24 +92,24 @@
             </td>
             <td>
               <div style="display:flex; gap:4px; flex-wrap:wrap;">
-                <button class="btn btn-ghost btn-sm" title="Editar" @click="abrirEditar(p)">✏️</button>
-                <button class="btn btn-ghost btn-sm" title="Ingresar stock" @click="abrirIngreso(p)" style="color:var(--color-success)">+📦</button>
-                <button class="btn btn-ghost btn-sm" title="Ajustar stock" @click="abrirAjuste(p)" style="color:var(--color-warning)">🔧</button>
-                <button class="btn btn-ghost btn-sm" title="Historial" @click="abrirHistorial(p)">📋</button>
+                <button class="btn btn-ghost btn-sm" title="Editar" @click="abrirEditar(p)"><Pencil :size="14" /></button>
+                <button class="btn btn-ghost btn-sm" title="Ingresar stock" @click="abrirIngreso(p)" style="color:var(--color-success)"><PackagePlus :size="14" /></button>
+                <button class="btn btn-ghost btn-sm" title="Ajustar stock" @click="abrirAjuste(p)" style="color:var(--color-warning)"><SlidersHorizontal :size="14" /></button>
+                <button class="btn btn-ghost btn-sm" title="Historial" @click="abrirHistorial(p)"><ClipboardList :size="14" /></button>
                 <button
                   v-if="p.activo"
                   class="btn btn-ghost btn-sm"
                   title="Descontinuar"
                   @click="descontinuar(p)"
                   style="color:var(--color-danger)"
-                >🚫</button>
+                ><Ban :size="14" /></button>
                 <button
                   v-else
                   class="btn btn-ghost btn-sm"
                   title="Reactivar"
                   @click="reactivar(p)"
                   style="color:var(--color-success)"
-                >✅</button>
+                ><RotateCcw :size="14" /></button>
               </div>
             </td>
           </tr>
@@ -289,6 +289,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Pencil, PackagePlus, SlidersHorizontal, ClipboardList, Ban, RotateCcw } from 'lucide-vue-next'
 import { productos as productosApi } from '@/api/productos'
 
 const lista = ref([])

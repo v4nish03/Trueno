@@ -2,7 +2,7 @@
   <div style="height: 100%">
     <!-- Pantalla de bloqueo -->
     <div v-if="!cajaStore.cargando && !cajaStore.abierta" class="empty-state" style="height: calc(100vh - 100px); justify-content:center">
-      <div class="empty-state-icon" style="font-size:56px; margin-bottom:16px">🔒</div>
+      <div class="empty-state-icon" style="font-size:56px; font-weight:100; color:var(--color-muted); margin-bottom:16px">||</div>
       <h2 style="margin:0 0 8px; font-weight:800; font-size:24px">Caja Cerrada</h2>
       <p style="color:var(--color-muted); margin:0 0 24px">Debes abrir un turno de caja para poder realizar ventas.</p>
       <router-link to="/" class="btn btn-primary" style="padding:12px 24px; font-size:15px; border-radius:8px">Ir al Dashboard para Abrir Turno</router-link>
@@ -12,7 +12,7 @@
     <!-- Panel izquierdo: Búsqueda -->
     <div class="pos-left">
       <div style="margin-bottom: 16px">
-        <h1 style="font-size:20px; font-weight:800; margin:0 0 4px">🛒 Punto de Venta</h1>
+        <h1 style="font-size:20px; font-weight:800; margin:0 0 4px">Punto de Venta</h1>
         <p style="font-size:12px; color: var(--color-muted); margin:0">Busca + Enter para agregar · Rápido como caja</p>
       </div>
 
@@ -23,7 +23,7 @@
           v-model="query"
           class="input"
           style="border:none; background:transparent; font-size:16px; padding: 10px 14px"
-          placeholder="🔍  Nombre o código del producto... (F2)"
+          placeholder="Nombre o código del producto... (F2)"
           @keydown.enter="seleccionarPrimero"
           @input="buscar"
           autofocus
@@ -47,13 +47,13 @@
           </div>
           <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px">
             <span style="font-weight:700; color:var(--color-success); font-size:14px">Bs {{ fmt(p.precio1) }}</span>
-            <span :class="stockBadge(p)" style="font-size:10px">{{ p.stock === 0 ? '🔴 Sin stock' : (p.stock <= p.stock_minimo ? '🟡 ' + p.stock : '🟢 ' + p.stock) }}</span>
+            <span :class="stockBadge(p)" style="font-size:10px">{{ p.stock === 0 ? 'Sin stock' : p.stock + ' uds' }}</span>
           </div>
         </div>
       </div>
 
       <div v-else-if="query && !buscando" class="empty-state" style="padding: 32px 0">
-        <div class="empty-state-icon">🔍</div>
+        <div class="empty-state-icon" style="font-size:32px; color:var(--color-muted)">—</div>
         <div class="empty-state-text">Sin resultados para "{{ query }}"</div>
       </div>
 
@@ -64,13 +64,13 @@
       <!-- Mensaje de éxito -->
       <transition name="fade">
         <div v-if="mensajeExito" class="alert alert-success" style="margin-top:12px">
-          ✅ {{ mensajeExito }}
+          {{ mensajeExito }}
         </div>
       </transition>
 
       <transition name="fade">
         <div v-if="mensajeError" class="alert alert-danger" style="margin-top:12px">
-          ⚠️ {{ mensajeError }}
+          {{ mensajeError }}
         </div>
       </transition>
     </div>
@@ -86,7 +86,7 @@
           :class="{ active: p.id === carrito.tabActivaId }"
           @click="carrito.cambiarPestana(p.id)"
         >
-          <span style="margin-right:4px">👤</span>
+          <span style="margin-right:4px">●</span>
           {{ p.nombre }}
           <span
             v-if="carrito.pestanas.length > 1"
@@ -101,7 +101,7 @@
 
       <div style="margin-bottom: 14px; display:flex; align-items:center; justify-content:space-between">
         <span style="font-size:15px; font-weight:700">
-          🧾 Carrito Actual
+          Carrito
           <span v-if="carrito.cantidadItems > 0" class="badge badge-blue" style="margin-left:4px">{{ carrito.cantidadItems }}</span>
         </span>
         <button
@@ -109,13 +109,13 @@
           class="btn btn-ghost btn-sm"
           style="color:var(--color-danger)"
           @click="limpiarCarrito"
-        >🗑 Limpiar</button>
+        >Limpiar</button>
       </div>
 
       <!-- Items del carrito -->
       <div class="carrito-lista">
         <div v-if="carrito.items.length === 0" class="empty-state" style="height:100%; justify-content:center">
-          <div class="empty-state-icon">🛒</div>
+          <div class="empty-state-icon" style="font-size:32px; color:var(--color-muted)">—</div>
           <div class="empty-state-text">Carrito vacío</div>
           <div style="font-size:11px; color:var(--color-muted); margin-top:4px">Busca un producto y presiona Enter</div>
         </div>
@@ -177,7 +177,7 @@
           @click="abrirConfirmar"
         >
           <div v-if="carrito.cargando" class="spinner" style="width:16px;height:16px"></div>
-          ✅ Confirmar Venta
+          Confirmar Venta
         </button>
       </div>
     </div>
@@ -186,7 +186,7 @@
     <div v-if="modalConfirmar" class="modal-backdrop" @click.self="modalConfirmar=false">
       <div class="modal">
         <div class="modal-header">
-          <span class="modal-title">💳 Confirmar Venta</span>
+          <span class="modal-title">Confirmar Venta</span>
           <button class="btn btn-ghost btn-sm" @click="modalConfirmar=false">✕</button>
         </div>
 
@@ -210,12 +210,12 @@
               class="metodo-btn"
               :class="{ active: metodoPago === 'efectivo' }"
               @click="metodoPago = 'efectivo'"
-            >💵 Efectivo</button>
+            ><Banknote :size="18" style="margin-right:6px" /> Efectivo</button>
             <button
               class="metodo-btn"
               :class="{ active: metodoPago === 'qr' }"
               @click="metodoPago = 'qr'"
-            >📱 QR</button>
+            ><QrCode :size="18" style="margin-right:6px" /> QR</button>
           </div>
         </div>
 
@@ -225,7 +225,7 @@
           <button class="btn btn-secondary" @click="modalConfirmar=false">Cancelar</button>
           <button class="btn btn-success" @click="confirmarVenta" :disabled="!metodoPago || carrito.cargando" style="min-width:140px; font-size:14px">
             <div v-if="carrito.cargando" class="spinner" style="width:14px;height:14px"></div>
-            ✅ Confirmar
+            <CheckCircle :size="16" style="margin-right:4px" /> Confirmar
           </button>
         </div>
       </div>
@@ -234,21 +234,23 @@
     <!-- Modal éxito de venta -->
     <div v-if="ventaCompletada" class="modal-backdrop">
       <div class="modal" style="text-align:center">
-        <div style="font-size:56px; margin-bottom:12px">🎉</div>
+        <div style="margin-bottom:12px"><CheckCircle2 :size="56" color="var(--color-success)" /></div>
         <div style="font-size:20px; font-weight:800; margin-bottom:8px; color:var(--color-success)">¡Venta Completada!</div>
         <div style="font-size:14px; color:var(--color-muted); margin-bottom:4px">Venta #{{ ventaCompletada.venta.id }}</div>
         <div style="font-size:28px; font-weight:800; color:var(--color-accent); margin: 12px 0">
           Bs {{ fmt(ventaCompletada.venta.total) }}
         </div>
-        <div class="badge" :class="ventaCompletada.venta.tipo === 'sin_stock' ? 'badge-red' : 'badge-green'" style="margin-bottom:16px; font-size:12px">
-          {{ ventaCompletada.venta.tipo === 'sin_stock' ? '⚠️ Venta sin stock registrada' : '✅ Con stock' }}
+        <div class="badge" :class="ventaCompletada.venta.tipo === 'sin_stock' ? 'badge-red' : 'badge-green'" style="margin-bottom:16px; font-size:12px; display:flex; align-items:center; justify-content:center; gap:4px">
+          <AlertTriangle v-if="ventaCompletada.venta.tipo === 'sin_stock'" :size="12" />
+          <Check v-else :size="12" />
+          {{ ventaCompletada.venta.tipo === 'sin_stock' ? 'Sin stock registrada' : 'Con stock' }}
         </div>
         <div style="font-size:12px; color:var(--color-muted); margin-bottom:20px">
           Método: {{ ventaCompletada.venta.metodo_pago }}
           · Recibo: {{ ventaCompletada.recibo?.codigo_qr || '' }}
         </div>
-        <button class="btn btn-primary" style="width:100%; margin-bottom:8px" @click="imprimirTicket(ventaCompletada)">
-          🖨 Imprimir Ticket
+        <button class="btn btn-primary" style="width:100%; margin-bottom:8px; display:flex; align-items:center; justify-content:center; gap:6px" @click="imprimirTicket(ventaCompletada)">
+          <Printer :size="15" /> Imprimir Ticket
         </button>
         <button class="btn btn-ghost" style="width:100%; color:var(--color-muted)" @click="ventaCompletada = null; focusBusqueda()">
           Nueva Venta
@@ -261,6 +263,7 @@
 
 <script setup>
 import { ref, onMounted, nextTick } from 'vue'
+import { Banknote, QrCode, CheckCircle, CheckCircle2, AlertTriangle, Check, Printer } from 'lucide-vue-next'
 import { productos as productosApi } from '@/api/productos'
 import { useCarritoStore } from '@/stores/carrito'
 import { useCajaStore } from '@/stores/caja'

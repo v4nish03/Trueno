@@ -115,7 +115,10 @@
             <div class="empty-state-text">Sin datos</div>
           </div>
           <div v-for="m in metodoPago" :key="m.metodo_pago" class="metodo-row">
-            <div class="metodo-icon">{{ m.metodo_pago === 'efectivo' ? '💵' : '📱' }}</div>
+            <div class="metodo-icon">
+              <Banknote v-if="m.metodo_pago === 'efectivo'" :size="22" />
+              <QrCode v-else :size="22" />
+            </div>
             <div style="flex:1">
               <div style="font-weight: 600; text-transform: capitalize; font-size:13px">{{ m.metodo_pago }}</div>
               <div style="font-size:11px; color: var(--color-muted)">{{ m.cantidad_ventas }} ventas</div>
@@ -198,6 +201,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import { Banknote, QrCode } from 'lucide-vue-next'
 import { reportes as reportesApi } from '@/api/reportes'
 import { useAlertasStore } from '@/stores/alertas'
 import { useCajaStore } from '@/stores/caja'

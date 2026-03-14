@@ -49,4 +49,12 @@ router.afterEach((to) => {
     document.title = to.meta.title ? `${to.meta.title} — Trueno Motors` : 'Trueno Motors'
 })
 
+// Manejo de errores de carga de chunks (fragmentos JS) por caché antigua
+router.onError((error, to) => {
+    if (error.message.includes('Failed to fetch dynamically imported module') || error.message.includes('Importing a module script failed')) {
+        // Forzar una recarga completa para obtener el nuevo index.html y los nuevos assets
+        window.location.href = to.fullPath;
+    }
+})
+
 export default router

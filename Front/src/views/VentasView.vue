@@ -15,7 +15,7 @@
         <input v-model="filtroHasta" type="date" class="input" style="width: 150px" @change="cargar" />
         <div style="display:flex; gap:8px; justify-content:flex-end;">
           <button class="btn btn-ghost btn-sm" @click="limpiarFiltros">✕ Limpiar filtros</button>
-          <button class="btn btn-secondary btn-sm" @click="cargar">🔄 Actualizar</button>
+          <button class="btn btn-secondary btn-sm" style="display:flex;align-items:center;gap:5px" @click="cargar"><RefreshCw :size="13" /> Actualizar</button>
         </div>
       </div>
     </div>
@@ -66,13 +66,17 @@
               Bs {{ fmt(v.total) }}
             </td>
             <td>
-              <span class="badge" :class="v.metodo_pago === 'efectivo' ? 'badge-green' : 'badge-cyan'">
-                {{ v.metodo_pago === 'efectivo' ? '💵 Efectivo' : '📱 QR' }}
+              <span class="badge" :class="v.metodo_pago === 'efectivo' ? 'badge-green' : 'badge-cyan'" style="display:flex; align-items:center; gap:3px">
+                <Banknote v-if="v.metodo_pago === 'efectivo'" :size="11" />
+                <QrCode v-else :size="11" />
+                {{ v.metodo_pago === 'efectivo' ? 'Efectivo' : 'QR' }}
               </span>
             </td>
             <td>
-              <span class="badge" :class="v.tipo === 'sin_stock' ? 'badge-red' : 'badge-blue'">
-                {{ v.tipo === 'sin_stock' ? '⚠️ Sin stock' : '✅ Normal' }}
+              <span class="badge" :class="v.tipo === 'sin_stock' ? 'badge-red' : 'badge-blue'" style="display:flex; align-items:center; gap:3px">
+                <AlertTriangle v-if="v.tipo === 'sin_stock'" :size="11" />
+                <Check v-else :size="11" />
+                {{ v.tipo === 'sin_stock' ? 'Sin stock' : 'Normal' }}
               </span>
             </td>
             <td>
@@ -80,14 +84,14 @@
             </td>
             <td>
               <div style="display:flex; gap:4px;" @click.stop>
-                <button class="btn btn-ghost btn-sm" @click="abrirDetalle(v.id)" title="Ver detalle">👁</button>
+                <button class="btn btn-ghost btn-sm" @click="abrirDetalle(v.id)" title="Ver detalle"><Eye :size="14" /></button>
                 <button
                   v-if="v.estado === 'completa'"
                   class="btn btn-ghost btn-sm"
                   style="color:var(--color-danger)"
                   @click="anularVenta(v)"
                   title="Anular venta"
-                >🚫</button>
+                ><Ban :size="14" /></button>
               </div>
             </td>
           </tr>
@@ -99,9 +103,9 @@
     <div v-if="modalDetalle" class="modal-backdrop" @click.self="modalDetalle=null">
       <div class="modal modal-lg">
         <div class="modal-header">
-          <span class="modal-title">📄 Venta #{{ modalDetalle.id }}</span>
+          <span class="modal-title">Venta #{{ modalDetalle.id }}</span>
           <div style="display:flex; gap:8px;">
-            <button class="btn btn-primary btn-sm" @click="imprimirTicket(modalDetalle)">🖨 Imprimir Comprobante</button>
+            <button class="btn btn-primary btn-sm" style="display:flex;align-items:center;gap:5px" @click="imprimirTicket(modalDetalle)"><Printer :size="13" /> Imprimir Comprobante</button>
             <button class="btn btn-ghost btn-sm" @click="modalDetalle=null">✕</button>
           </div>
         </div>
@@ -116,7 +120,11 @@
             </div>
             <div class="kpi-card" style="padding:10px 14px">
               <div class="kpi-label">Método</div>
-              <div style="font-size:16px; font-weight:700">{{ detalleData.metodo_pago === 'efectivo' ? '💵 Efectivo' : '📱 QR' }}</div>
+              <div style="font-size:16px; font-weight:700; display:flex; align-items:center; gap:6px">
+                <Banknote v-if="detalleData.metodo_pago === 'efectivo'" :size="16" />
+                <QrCode v-else :size="16" />
+                {{ detalleData.metodo_pago === 'efectivo' ? 'Efectivo' : 'QR' }}
+              </div>
             </div>
             <div class="kpi-card" style="padding:10px 14px">
               <div class="kpi-label">Estado</div>
@@ -126,7 +134,7 @@
 
           <div style="font-size:11px; color:var(--color-muted); margin-bottom:12px">
             {{ fmtFecha(detalleData.fecha) }}
-            <span v-if="detalleData.tipo === 'sin_stock'" class="badge badge-red" style="margin-left:8px">⚠️ Vendido sin stock</span>
+            <span v-if="detalleData.tipo === 'sin_stock'" class="badge badge-red" style="margin-left:8px; display:inline-flex; align-items:center; gap:3px"><AlertTriangle :size="11" /> Vendido sin stock</span>
           </div>
 
           <!-- Productos -->
@@ -202,6 +210,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { Banknote, QrCode, AlertTriangle, Check, Eye, Ban, Printer, RefreshCw } from 'lucide-vue-next'
 import { ventas as ventasApi } from '@/api/ventas'
 import { devoluciones as devolucionesApi } from '@/api/devoluciones'
 

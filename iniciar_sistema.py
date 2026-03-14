@@ -5,6 +5,43 @@ import webbrowser
 import sys
 import platform
 
+# =========================================================
+# 🌐  SELECTOR DE NAVEGADOR
+# Cambia este valor para elegir con qué navegador abrir la app.
+# Opciones: "default" | "chrome" | "chromium" | "firefox" | "edge" | "opera"
+# También se puede pasar desde la terminal: NAVEGADOR=firefox ./iniciar_linux.sh
+# =========================================================
+NAVEGADOR = os.environ.get("NAVEGADOR", "default")
+
+# Mapeo de nombres amigables a binarios reales por sistema operativo
+# El script prueba cada nombre en orden hasta encontrar el que está instalado.
+BROWSER_COMMANDS = {
+    "chrome":    ["google-chrome", "google-chrome-stable", "chrome", "chromium-browser"],
+    "chromium":  ["chromium-browser", "chromium", "google-chrome"],
+    "firefox":   ["firefox"],
+    "edge":      ["microsoft-edge", "microsoft-edge-stable", "msedge"],
+    "opera":     ["opera"],
+}
+
+def abrir_navegador(url: str, navegador: str):
+    """Abre el navegador seleccionado. Prueba nombres reales y cae al default si falla."""
+    if navegador == "default":
+        webbrowser.open(url)
+        return
+
+    candidatos = BROWSER_COMMANDS.get(navegador.lower(), [navegador])
+    for cmd in candidatos:
+        try:
+            subprocess.Popen([cmd, url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            print(f"✅ Navegador '{cmd}' lanzado correctamente.")
+            return
+        except FileNotFoundError:
+            continue
+
+    # Ninguno funcionó, usar el default del sistema
+    print(f"⚠️  No se encontró '{navegador}' instalado. Abriendo el navegador por defecto.")
+    webbrowser.open(url)
+
 base_dir = os.path.dirname(os.path.abspath(__file__))
 backend_dir = os.path.join(base_dir, 'Back')
 
@@ -37,8 +74,8 @@ try:
     time.sleep(2)
     
     url = "http://localhost:8000/"
-    print(f"🌐 ¡Sistema listo y en red local! Abriendo navegador en: {url}")
-    webbrowser.open(url)
+    print(f"🌐 ¡Sistema listo! Abriendo: {url}")
+    abrir_navegador(url, NAVEGADOR)
     
     print("\n----------------------------------------------------")
     print("✅ EL SERVIDOR ESTÁ FUNCIONANDO. NO CIERRES ESTA VENTANA.")

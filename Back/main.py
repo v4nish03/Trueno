@@ -95,20 +95,33 @@ if os.path.isdir(frontend_path):
     app.mount("/assets", StaticFiles(directory=os.path.join(frontend_path, "assets")), name="assets")
     
     # Catch-all para que Vue Router controle la navegación (Single Page Application)
+    # Headers para que el navegador NUNCA cachee index.html
+    # (los assets con hash en el nombre sí pueden cachearse — su nombre mismo cambia con cada build)
+    _NO_CACHE = {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+        "Expires": "0",
+    }
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_vue_spa(request: __import__('fastapi').Request, full_path: str):
-        # Si el cliente solicita explícitamente HTML (es decir, es una navegación directa del navegador)
         accept_header = request.headers.get("accept", "")
-        
-        if "text/html" in accept_header:
-            return FileResponse(os.path.join(frontend_path, "index.html"))
+        index_html = os.path.join(frontend_path, "index.html")
 
-        # Si no es HTML, quizás están pidiendo un recurso estático (p. ej. manifest.json, favicon)
+        # Navegación directa del navegador → siempre index.html sin caché
+        if "text/html" in accept_header:
+            return FileResponse(index_html, headers=_NO_CACHE)
+
+        # Archivos estáticos que existen (manifest.json, favicon, etc.)
         file_path = os.path.join(frontend_path, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
-        
-        # Para todo lo demás (APIs sin coincidencia, endpoints con slash faltante, etc) devolvemos JSON 404
+
+        # Fallback SPA: si el path no es un archivo estático conocido, devolver index.html
+        # Esto cubre rutas de Vue Router como /pos, /ventas, /productos, etc.
+        if full_path and not full_path.startswith(tuple(API_PREFIXES)):
+            return FileResponse(index_html, headers=_NO_CACHE)
+
         return JSONResponse(status_code=404, content={"detail": "Not Found"})
 else:
     @app.get("/", tags=["Sistema"])
