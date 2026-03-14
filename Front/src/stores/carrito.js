@@ -127,6 +127,13 @@ export const useCarritoStore = defineStore('carrito', () => {
                 codigo: producto.codigo,
                 cantidad,
                 precio_unitario: producto.precio1,
+                precio_nivel: 1,  // nivel activo (1-4)
+                precios: [           // todos los precios del producto
+                    producto.precio1,
+                    producto.precio2,
+                    producto.precio3,
+                    producto.precio4,
+                ].filter(p => p != null && p > 0),
                 stock: producto.stock,
             })
         } catch (e) {
@@ -141,6 +148,31 @@ export const useCarritoStore = defineStore('carrito', () => {
             await ventasApi.eliminarProducto(ventaId.value, productoId)
             pestanaActiva.value.items = pestanaActiva.value.items.filter(i => i.producto_id !== productoId)
         } catch (e) {
+            error.value = e.message
+            throw e
+        }
+    }
+
+    async function cambiarPrecioItem(productoId, nuevoPrecio, nivel) {
+        const item = items.value.find(i => i.producto_id === productoId)
+        if (!item || item.precio_unitario === nuevoPrecio) return
+
+        const precioAnterior = item.precio_unitario
+        item.precio_unitario = nuevoPrecio
+        item.precio_nivel = nivel
+
+        // Re-sincronizar con el backend: eliminar y re-agregar con el nuevo precio
+        try {
+            await ventasApi.eliminarProducto(ventaId.value, productoId)
+            await ventasApi.agregarProducto(ventaId.value, {
+                producto_id: productoId,
+                cantidad: item.cantidad,
+                precio_unitario: nuevoPrecio
+            })
+        } catch (e) {
+            // Revertir en caso de error
+            item.precio_unitario = precioAnterior
+            item.precio_nivel = nivel === 1 ? nivel : nivel - 1
             error.value = e.message
             throw e
         }
@@ -209,6 +241,7 @@ export const useCarritoStore = defineStore('carrito', () => {
         pestanas, tabActivaId,
         ventaId, items, total, cantidadItems,
         nuevaPestana, cambiarPestana, cerrarPestana,
-        abrirVenta, agregarItem, quitarItem, actualizarCantidad, confirmarVenta, limpiar
+        abrirVenta, agregarItem, quitarItem,
+        cambiarPrecioItem, actualizarCantidad, confirmarVenta, limpiar
     }
 })

@@ -1,7 +1,7 @@
 import client from './client'
 
 export const ventas = {
-    listar: (params = {}) => client.get('/ventas', { params }),
+    listar: (params = {}) => client.get('/ventas/', { params }),
     obtener: (id) => client.get(`/ventas/${id}`),
     abrir: () => client.post('/ventas/abrir'),
     agregarProducto: (ventaId, data) => client.post(`/ventas/${ventaId}/productos`, data),

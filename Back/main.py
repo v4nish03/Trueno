@@ -66,18 +66,20 @@ if os.path.isdir(frontend_path):
     
     # Catch-all para que Vue Router controle la navegación (Single Page Application)
     @app.get("/{full_path:path}", include_in_schema=False)
-    async def serve_vue_spa(full_path: str):
-        # Excluir rutas de API para que FastAPI las maneje correctamente
-        first_segment = full_path.split("/")[0]
-        if first_segment in API_PREFIXES:
-            return JSONResponse(status_code=404, content={"detail": "Not Found"})
+    async def serve_vue_spa(request: __import__('fastapi').Request, full_path: str):
+        # Si el cliente solicita explícitamente HTML (es decir, es una navegación directa del navegador)
+        accept_header = request.headers.get("accept", "")
+        
+        if "text/html" in accept_header:
+            return FileResponse(os.path.join(frontend_path, "index.html"))
 
+        # Si no es HTML, quizás están pidiendo un recurso estático (p. ej. manifest.json, favicon)
         file_path = os.path.join(frontend_path, full_path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
         
-        # Cualquier otra ruta devuelve el index.html (Vue Router)
-        return FileResponse(os.path.join(frontend_path, "index.html"))
+        # Para todo lo demás (APIs sin coincidencia, endpoints con slash faltante, etc) devolvemos JSON 404
+        return JSONResponse(status_code=404, content={"detail": "Not Found"})
 else:
     @app.get("/", tags=["Sistema"])
     def raiz():

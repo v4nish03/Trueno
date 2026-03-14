@@ -50,127 +50,114 @@ class TelegramService:
     
     async def enviar_alertas(self, db: Session, mensaje: str) -> dict:
         """
-        Enviar alertas a múltiples números de Telegram
-        Retorna: {"exitos": [numeros], "fallos": [numeros]}
+        Enviar alertas a múltiples números de Telegram.
+        Lee TELEGRAM_TOKEN y TELEGRAM_CHAT_ID (separados por coma) del .env.
         """
-        # Obtener configuración desde variables de entorno primero
-        token = self._obtener_configuracion_env("TELEGRAM_BOT_TOKEN")
-        numeros_alertas = self._obtener_configuracion_env("TELEGRAM_ALERTAS_NUMEROS")
+        # --- Leer variables del .env (nombres reales del proyecto) ---
+        token = self._obtener_configuracion_env("TELEGRAM_TOKEN")
+        numeros_alertas = self._obtener_configuracion_env("TELEGRAM_CHAT_ID")
         habilitado_env = self._obtener_configuracion_env("TELEGRAM_HABILITADO", "false")
-        
-        # Si no hay variables de entorno, usar la base de datos
+
+        # Si no hay variables de entorno, caer a base de datos
         if not token:
             token = Configuracion.obtener_telegram_token(db)
         if not numeros_alertas:
             numeros_alertas = Configuracion.obtener_telegram_alertas(db)
-        if habilitado_env == "false":
-            # Verificar en la base de datos
-            habilitado_db = db.query(Configuracion).filter(
-                Configuracion.clave == "telegram_habilitado",
-                Configuracion.valor == "true"
-            ).first()
-            if not habilitado_db:
-                logger.info("📵 Telegram deshabilitado - no se envían alertas")
-                return {"exitos": [], "fallos": [], "mensaje": "Telegram deshabilitado"}
-        
+
+        # Si hay token y números en el .env, consideramos Telegram habilitado
+        # aunque TELEGRAM_HABILITADO no esté seteado explícitamente
+        if habilitado_env.lower() not in ("true", "1", "si", "yes"):
+            if token and numeros_alertas:
+                # Hay configuración completa en .env → habilitado automáticamente
+                habilitado_env = "true"
+            else:
+                # Sin config en .env, verificar BD
+                habilitado_db = db.query(Configuracion).filter(
+                    Configuracion.clave == "telegram_habilitado",
+                    Configuracion.valor == "true"
+                ).first()
+                if not habilitado_db:
+                    logger.info("📵 Telegram deshabilitado - no se envían alertas")
+                    return {"exitos": [], "fallos": [], "mensaje": "Telegram deshabilitado"}
+
         if not token:
             logger.error("❌ Token de Telegram no configurado")
             return {"exitos": [], "fallos": [], "mensaje": "Token no configurado"}
-        
+
         if not numeros_alertas:
             logger.warning("⚠️ No hay números de alerta configurados")
             return {"exitos": [], "fallos": [], "mensaje": "No hay números configurados"}
-        
-        # Procesar números (separados por comas)
-        numeros = [num.strip() for num in numeros_alertas.split(",") if num.strip()]
-        
+
+        # Procesar números (separados por comas, máximo 2)
+        numeros = [num.strip() for num in numeros_alertas.split(",") if num.strip()][:2]
+
         if not numeros:
-            logger.warning("⚠️ No se encontraron números válidos en la configuración")
             return {"exitos": [], "fallos": [], "mensaje": "No hay números válidos"}
-        
-        # Limitar a 2 números como solicitaste
-        numeros = numeros[:2]
-        
+
         # Enviar mensajes en paralelo
-        tareas = []
-        for numero in numeros:
-            tarea = self._enviar_mensaje_individual(token, numero, mensaje)
-            tareas.append((numero, tarea))
-        
-        # Esperar resultados
-        resultados = await asyncio.gather(*[tarea for _, tarea in tareas], return_exceptions=True)
-        
-        # Procesar resultados
-        exitos = []
-        fallos = []
-        
+        tareas = [(num, self._enviar_mensaje_individual(token, num, mensaje)) for num in numeros]
+        resultados = await asyncio.gather(*[t for _, t in tareas], return_exceptions=True)
+
+        exitos, fallos = [], []
         for (numero, _), resultado in zip(tareas, resultados):
-            if isinstance(resultado, Exception):
+            if isinstance(resultado, Exception) or not resultado:
                 fallos.append(numero)
-                logger.error(f"❌ Error con {numero}: {str(resultado)}")
-            elif resultado:
-                exitos.append(numero)
+                logger.error(f"❌ Error con {numero}: {resultado}")
             else:
-                fallos.append(numero)
-        
-        logger.info(f"📊 Alertas enviadas: {len(exitos)} exitos, {len(fallos)} fallos")
-        
-        return {
-            "exitos": exitos,
-            "fallos": fallos,
-            "total_enviados": len(exitos) + len(fallos)
-        }
+                exitos.append(numero)
+
+        logger.info(f"📊 Alertas enviadas: {len(exitos)} éxitos, {len(fallos)} fallos")
+        return {"exitos": exitos, "fallos": fallos, "total_enviados": len(exitos) + len(fallos)}
     
     async def enviar_backup(self, db: Session, mensaje: str) -> bool:
         """
-        Enviar backup a un solo número de Telegram
-        Retorna True/False indicando éxito
+        Enviar backup a un solo número de Telegram.
+        Lee TELEGRAM_TOKEN y TELEGRAM_CHAT_ID_BACKUP del .env.
         """
-        # Obtener configuración desde variables de entorno primero
-        token = self._obtener_configuracion_env("TELEGRAM_BOT_TOKEN")
-        numero_backup = self._obtener_configuracion_env("TELEGRAM_BACKUP_NUMERO")
+        # --- Leer variables del .env (nombres reales del proyecto) ---
+        token = self._obtener_configuracion_env("TELEGRAM_TOKEN")
+        numero_backup = self._obtener_configuracion_env("TELEGRAM_CHAT_ID_BACKUP")
         habilitado_env = self._obtener_configuracion_env("TELEGRAM_HABILITADO", "false")
-        
-        # Si no hay variables de entorno, usar la base de datos
+
+        # Si no hay variables de entorno, caer a base de datos
         if not token:
             token = Configuracion.obtener_telegram_token(db)
         if not numero_backup:
             numero_backup = Configuracion.obtener_telegram_backup(db)
-        if habilitado_env == "false":
-            # Verificar en la base de datos
-            habilitado_db = db.query(Configuracion).filter(
-                Configuracion.clave == "telegram_habilitado",
-                Configuracion.valor == "true"
-            ).first()
-            if not habilitado_db:
-                logger.info("📵 Telegram deshabilitado - no se envía backup")
-                return False
-        
+
+        # Si hay token y número de backup en .env, habilitado automáticamente
+        if habilitado_env.lower() not in ("true", "1", "si", "yes"):
+            if token and numero_backup:
+                habilitado_env = "true"
+            else:
+                habilitado_db = db.query(Configuracion).filter(
+                    Configuracion.clave == "telegram_habilitado",
+                    Configuracion.valor == "true"
+                ).first()
+                if not habilitado_db:
+                    logger.info("📵 Telegram deshabilitado - no se envía backup")
+                    return False
+
         if not token:
             logger.error("❌ Token de Telegram no configurado")
             return False
-        
         if not numero_backup:
             logger.warning("⚠️ No hay número de backup configurado")
             return False
-        
-        # Enviar backup
+
         resultado = await self._enviar_mensaje_individual(token, numero_backup, mensaje)
-        
         if resultado:
             logger.info(f"✅ Backup enviado a {numero_backup}")
         else:
             logger.error(f"❌ Error enviando backup a {numero_backup}")
-        
         return resultado
     
     async def verificar_conexion(self, db: Session) -> dict:
         """
-        Verificar la conexión con Telegram
-        Retorna información sobre el estado del bot
+        Verificar la conexión con Telegram.
+        Leo TELEGRAM_TOKEN del .env.
         """
-        # Obtener token desde variables de entorno o base de datos
-        token = self._obtener_configuracion_env("TELEGRAM_BOT_TOKEN")
+        token = self._obtener_configuracion_env("TELEGRAM_TOKEN")
         if not token:
             token = Configuracion.obtener_telegram_token(db)
         

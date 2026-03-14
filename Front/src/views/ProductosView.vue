@@ -27,9 +27,10 @@
           <option value="bajo">🟡 Bajo mínimo</option>
           <option value="cero">🔴 Sin stock</option>
         </select>
-        <select v-model="soloActivos" class="input" style="width: 130px" @change="cargar">
-          <option :value="true">Solo activos</option>
-          <option :value="false">Todos</option>
+        <select v-model="filtroEstado" class="input" style="width: 140px">
+          <option value="activos">Solo activos</option>
+          <option value="inactivos">Descontinuados</option>
+          <option value="todos">Todos</option>
         </select>
       </div>
     </div>
@@ -47,7 +48,7 @@
             <th>Nombre</th>
             <th>Stock</th>
             <th>Precio 1</th>
-            <th>Precio 2</th>
+            <th>P2 | P3 | P4</th>
             <th>Ubicación</th>
             <th>Sin Stock</th>
             <th>Estado</th>
@@ -71,7 +72,9 @@
               </div>
             </td>
             <td style="font-weight: 600; color: var(--color-success)">Bs {{ fmt(p.precio1) }}</td>
-            <td style="color: var(--color-muted)">{{ p.precio2 ? 'Bs ' + fmt(p.precio2) : '—' }}</td>
+            <td style="color: var(--color-muted); font-size:11px">
+              {{ p.precio2 ? fmt(p.precio2) : '-' }} | {{ p.precio3 ? fmt(p.precio3) : '-' }} | {{ p.precio4 ? fmt(p.precio4) : '-' }}
+            </td>
             <td>
               <span class="badge" :class="p.ubicacion === 'tienda' ? 'badge-blue' : 'badge-cyan'">
                 {{ p.ubicacion === 'tienda' ? '🏪 Tienda' : '🏭 Bodega' }}
@@ -154,6 +157,10 @@
             <div class="form-group">
               <label class="form-label">Precio 3 (Bs)</label>
               <input v-model.number="modalForm.precio3" type="number" step="0.01" min="0" class="input" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Precio 4 (Bs)</label>
+              <input v-model.number="modalForm.precio4" type="number" step="0.01" min="0" class="input" />
             </div>
           </div>
           <div class="form-row">
@@ -287,7 +294,7 @@ const lista = ref([])
 const cargando = ref(true)
 const buscar = ref('')
 const filtroStock = ref('')
-const soloActivos = ref(true)
+const filtroEstado = ref('activos')
 const totalProductos = ref(0)
 
 const modalForm = ref(null)
@@ -316,6 +323,13 @@ const productosFiltrados = computed(() => {
   } else if (filtroStock.value === 'cero') {
     result = result.filter(p => p.stock === 0)
   }
+  
+  if (filtroEstado.value === 'activos') {
+    result = result.filter(p => p.activo === true)
+  } else if (filtroEstado.value === 'inactivos') {
+    result = result.filter(p => p.activo === false)
+  }
+  
   return result
 })
 
@@ -344,7 +358,8 @@ function fmtFecha(f) {
 async function cargar() {
   cargando.value = true
   try {
-    const res = await productosApi.listar({ solo_activos: soloActivos.value, limit: 500 })
+    // Pedimos todos los productos al backend y filtramos en el cliente (max 500)
+    const res = await productosApi.listar({ solo_activos: false, limit: 500 })
     lista.value = res.data
     totalProductos.value = res.data.length
   } catch (e) {

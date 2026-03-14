@@ -100,7 +100,10 @@
       <div class="modal modal-lg">
         <div class="modal-header">
           <span class="modal-title">📄 Venta #{{ modalDetalle.id }}</span>
-          <button class="btn btn-ghost btn-sm" @click="modalDetalle=null">✕</button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-primary btn-sm" @click="imprimirTicket(modalDetalle)">🖨 Imprimir Comprobante</button>
+            <button class="btn btn-ghost btn-sm" @click="modalDetalle=null">✕</button>
+          </div>
         </div>
 
         <div v-if="detalleCargando" class="loading-center"><div class="spinner"></div></div>
@@ -258,18 +261,59 @@ function limpiarFiltros() {
   cargar()
 }
 
-async function abrirDetalle(ventaId) {
-  modalDetalle.value = { id: ventaId }
-  detalleData.value = null
+async function abrirDetalle(id) {
+  modalDetalle.value = { id }
   detalleCargando.value = true
+  detalleData.value = null
   try {
-    const res = await ventasApi.obtener(ventaId)
+    const res = await ventasApi.obtener(id)
     detalleData.value = res.data
+    // guardar el objeto completo para poder imprimirlo
+    modalDetalle.value = res.data
   } catch (e) {
-    console.error(e)
+    alert('Error al cargar detalle: ' + e.message)
+    modalDetalle.value = null
   } finally {
     detalleCargando.value = false
   }
+}
+
+function imprimirTicket(datos) {
+  if (!datos || !datos.id) return
+  
+  // En VentasView, el objeto datos es toda la venta, pero la estructura que espera imprimirTicket
+  // en PosView era { venta: {id, metodo_pago, total}, recibo: {...} }
+  // Armamos una estructura compatible:
+  const ventaFormat = {
+    venta: {
+      id: datos.id,
+      metodo_pago: datos.metodo_pago,
+      total: datos.total
+    },
+    recibo: null // Si tuviéramos información del recibo en detalleData, lo pondríamos aquí
+  }
+
+  const html = `
+    <html><head><title>Ticket #${ventaFormat.venta.id}</title><style>
+      body { font-family: monospace; font-size: 13px; max-width: 300px; margin: auto; padding: 16px }
+      h2 { text-align:center; margin:0 0 4px } hr { border:1px dashed #ccc }
+      .row { display:flex; justify-content:space-between }
+      .total { font-size:16px; font-weight:bold; border-top:2px solid #000; margin-top:8px; padding-top:8px }
+    </style></head><body>
+      <h2>⚡ TRUENO MOTORS</h2>
+      <p style="text-align:center;margin:0 0 8px">Uyuni, Bolivia · ${new Date().toLocaleString('es-BO')}</p>
+      <hr/>
+      <div class="row"><b>Venta #${ventaFormat.venta.id}</b><span style="text-transform:capitalize">${ventaFormat.venta.metodo_pago}</span></div>
+      <hr/>
+      
+      <div class="row total"><span>TOTAL</span><span>Bs ${Number(ventaFormat.venta.total).toFixed(2)}</span></div>
+      <p style="text-align:center;margin-top:16px;font-size:11px">¡Copia de comprobante!</p>
+    </body></html>`
+    
+  const w = window.open('', '_blank', 'width=340,height=500')
+  w.document.write(html)
+  w.document.close()
+  w.print()
 }
 
 async function anularVenta(v) {

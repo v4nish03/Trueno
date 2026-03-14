@@ -125,7 +125,23 @@
             <div style="font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis">
               {{ item.nombre }}
             </div>
-            <div style="font-size:11px; color:var(--color-muted)">Bs {{ fmt(item.precio_unitario) }} c/u</div>
+            <!-- Selector de nivel de precio si hay más de 1 precio -->
+            <div v-if="item.precios && item.precios.length > 1" class="price-selector" style="margin-top:4px; display:flex; gap:3px; flex-wrap:wrap">
+              <button
+                v-for="(precio, idx) in item.precios"
+                :key="idx"
+                class="price-level-btn"
+                :class="{ active: item.precio_nivel === idx + 1 }"
+                @click="carrito.cambiarPrecioItem(item.producto_id, precio, idx + 1)"
+                :title="`Precio ${idx + 1}: Bs ${precio}`"
+              >P{{ idx + 1 }}</button>
+            </div>
+            <div style="font-size:11px; color:var(--color-muted); margin-top:2px">
+              Bs {{ fmt(item.precio_unitario) }} c/u
+              <span v-if="item.stock !== undefined" :style="{ color: item.stock <= 0 ? 'var(--color-danger)' : item.stock <= 3 ? 'var(--color-warning)' : 'var(--color-muted)' }">
+                · Stock: {{ item.stock }}
+              </span>
+            </div>
           </div>
           <!-- Cantidad: botones + input directo -->
           <div class="qty-control">
@@ -503,6 +519,29 @@ onMounted(() => {
 
 .carrito-footer {
   flex-shrink: 0;
+}
+
+/* Selector de nivel de precio */
+.price-level-btn {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  color: var(--color-muted);
+  cursor: pointer;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  transition: all 0.12s;
+  letter-spacing: 0.03em;
+}
+.price-level-btn:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+.price-level-btn.active {
+  background: rgba(46, 204, 64, 0.15);
+  border-color: var(--color-accent);
+  color: var(--color-accent);
 }
 
 .qty-control {
