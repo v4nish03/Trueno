@@ -100,6 +100,13 @@ def actualizar_producto(
     if not producto:
         raise Exception("Producto no encontrado")
 
+    # Si se está intentando cambiar el código, validar unicidad
+    if "codigo" in producto_data and producto_data["codigo"] != producto.codigo:
+        nuevo_codigo = producto_data["codigo"]
+        existe = db.query(Producto).filter(Producto.codigo == nuevo_codigo).first()
+        if existe:
+            raise Exception(f"Ya existe otro producto con el código '{nuevo_codigo}'")
+
     # Convertir ubicacion string a enum si viene en los datos
     if "ubicacion" in producto_data and producto_data["ubicacion"]:
         ubicacion_str = producto_data["ubicacion"]

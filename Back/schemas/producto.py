@@ -18,6 +18,7 @@ class ProductoCreate(BaseModel):
 
 
 class ProductoUpdate(BaseModel):
+    codigo: Optional[str] = Field(None, min_length=1, max_length=50)
     nombre: Optional[str] = Field(None, min_length=1, max_length=150)
     descripcion: Optional[str] = None
     precio1: Optional[float] = Field(None, gt=0)

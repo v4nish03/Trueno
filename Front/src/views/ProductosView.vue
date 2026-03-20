@@ -128,7 +128,7 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Código *</label>
-              <input v-model="modalForm.codigo" class="input" :disabled="!!modalForm.id" required />
+              <input v-model="modalForm.codigo" class="input" required />
             </div>
             <div class="form-group">
               <label class="form-label">Ubicación</label>
@@ -414,7 +414,7 @@ async function guardarProducto() {
   errorModal.value = ''
   try {
     if (modalForm.value.id) {
-      const { id, codigo, stock, activo, fecha_creacion, fecha_edicion, ventas_sin_stock, ...datos } = modalForm.value
+      const { id, stock, activo, fecha_creacion, fecha_edicion, ventas_sin_stock, ...datos } = modalForm.value
       await productosApi.actualizar(id, datos)
     } else {
       await productosApi.crear(modalForm.value)
