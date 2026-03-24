@@ -4,7 +4,8 @@
     "sucursal": "Uyuni - Bolivia",
     "telefono": "+591 00000000",
     "direccion": "Av. Principal #123",
-    "mensaje": "Repuestos y accesorios de confianza"
+    "mensaje": "Repuestos y accesorios de confianza",
+    "logo_path": "Front/assets/img/logo.jpeg"
   },
   "pdf": {
     "titulo": "Catalogo de Productos",
