@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from database import Base, engine
+from core.db_migrations import asegurar_columnas_catalogo
 import os
 
 from routers import productos, ventas, alertas, reportes, devoluciones, movimientos, caja, sistema, configuracion
@@ -11,6 +12,7 @@ import models.configuracion  # noqa: F401 (Necesario para que SQLAlchemy registr
 
 # Crear todas las tablas al iniciar
 Base.metadata.create_all(bind=engine)
+asegurar_columnas_catalogo(engine)
 
 app = FastAPI(
     title="Sistema de Inventario y Ventas - Trueno Motors",

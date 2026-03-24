@@ -25,12 +25,31 @@ def listar(
     limit: int = Query(100, ge=1, le=500),
     buscar: Optional[str] = None,
     solo_activos: bool = True,
+    categoria: Optional[str] = Query(None, description="Filtrar por categoría exacta"),
+    solo_con_imagen: bool = Query(False, description="Solo productos con imagen"),
     db: Session = Depends(get_db)
 ):
     """Listar todos los productos. Soporta búsqueda por nombre o código."""
-    productos = producto_service.listar_productos(db, skip, limit, buscar, solo_activos)
+    productos = producto_service.listar_productos(
+        db,
+        skip,
+        limit,
+        buscar,
+        solo_activos,
+        categoria,
+        solo_con_imagen,
+    )
     # ✅ Convertir lista de objetos ORM a lista de schemas
     return [ProductoResponse.from_orm(p) for p in productos]
+
+
+@router.get("/categorias", response_model=List[str])
+def categorias(
+    solo_activos: bool = True,
+    db: Session = Depends(get_db)
+):
+    """Lista de categorías disponibles para filtros o catálogos."""
+    return producto_service.listar_categorias(db, solo_activos)
 
 
 @router.get("/codigo/{codigo}", response_model=ProductoResponse)

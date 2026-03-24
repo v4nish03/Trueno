@@ -2,6 +2,7 @@ import client from './client'
 
 export const productos = {
     listar: (params = {}) => client.get('/productos/', { params }),
+    categorias: (params = {}) => client.get('/productos/categorias', { params }),
     obtener: (id) => client.get(`/productos/${id}`),
     obtenerPorCodigo: (codigo) => client.get(`/productos/codigo/${codigo}`),
     crear: (data) => client.post('/productos/', data),
