@@ -1,11 +1,15 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas.producto import ProductoCreate, ProductoUpdate, ProductoResponse
 from services import producto_service
 from typing import List, Optional
+from pathlib import Path
+from uuid import uuid4
 
 router = APIRouter()
+UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads" / "productos"
+UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
 
 
 @router.post("/", response_model=ProductoResponse)
@@ -50,6 +54,32 @@ def categorias(
 ):
     """Lista de categorías disponibles para filtros o catálogos."""
     return producto_service.listar_categorias(db, solo_activos)
+
+
+@router.post("/upload-imagen", response_model=dict)
+async def upload_imagen_producto(
+    archivo: UploadFile = File(...),
+):
+    """Sube imagen local y devuelve URL pública para asociar al producto."""
+    tipos_permitidos = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+    ext = tipos_permitidos.get(archivo.content_type)
+    if not ext:
+        raise HTTPException(status_code=400, detail="Formato no permitido. Usa JPG, PNG o WEBP")
+
+    nombre_archivo = f"{uuid4().hex}{ext}"
+    destino = UPLOADS_DIR / nombre_archivo
+
+    contenido = await archivo.read()
+    if len(contenido) > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="La imagen excede 5MB")
+
+    with open(destino, "wb") as f:
+        f.write(contenido)
+
+    return {
+        "mensaje": "Imagen subida correctamente",
+        "url": f"/uploads/productos/{nombre_archivo}"
+    }
 
 
 @router.get("/codigo/{codigo}", response_model=ProductoResponse)

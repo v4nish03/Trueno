@@ -153,12 +153,20 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Categoría</label>
-              <input v-model="modalForm.categoria" class="input" placeholder="Ej: Lubricantes" />
+              <input v-model="modalForm.categoria" class="input" list="categorias-list" placeholder="Ej: Lubricantes" />
+              <datalist id="categorias-list">
+                <option v-for="cat in categoriasDisponibles" :key="cat" :value="cat"></option>
+              </datalist>
             </div>
             <div class="form-group">
               <label class="form-label">URL de Imagen</label>
               <input v-model="modalForm.imagen_url" class="input" placeholder="https://..." />
             </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subir imagen local</label>
+            <input type="file" accept="image/png,image/jpeg,image/webp" class="input" @change="subirImagenLocal" />
+            <small style="color: var(--color-muted); font-size: 11px">Se sube al servidor y se guarda su URL automáticamente.</small>
           </div>
           <div v-if="modalForm.imagen_url" class="form-group">
             <label class="form-label">Vista previa</label>
@@ -316,6 +324,7 @@ const buscar = ref('')
 const filtroStock = ref('')
 const filtroEstado = ref('activos')
 const totalProductos = ref(0)
+const categoriasDisponibles = ref([])
 
 const modalForm = ref(null)
 const modalIngreso = ref(null)
@@ -389,6 +398,33 @@ async function cargar() {
   }
 }
 
+async function cargarCategoriasDisponibles() {
+  try {
+    const res = await productosApi.categorias({ solo_activos: false })
+    categoriasDisponibles.value = res.data || []
+  } catch (e) {
+    categoriasDisponibles.value = []
+  }
+}
+
+async function subirImagenLocal(event) {
+  const archivo = event?.target?.files?.[0]
+  if (!archivo || !modalForm.value) return
+  guardando.value = true
+  errorModal.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    const res = await productosApi.subirImagen(formData)
+    modalForm.value.imagen_url = res.data?.url || ''
+  } catch (e) {
+    errorModal.value = e.response?.data?.detail || e.message
+  } finally {
+    guardando.value = false
+    event.target.value = ''
+  }
+}
+
 function filtrar() { /* reactivo por computed */ }
 
 function abrirCrear() {
@@ -447,6 +483,7 @@ async function guardarProducto() {
     }
     modalForm.value = null
     await cargar()
+    await cargarCategoriasDisponibles()
   } catch (e) {
     errorModal.value = e.message
   } finally {
@@ -502,5 +539,7 @@ async function reactivar(p) {
   }
 }
 
-onMounted(cargar)
+onMounted(async () => {
+  await Promise.all([cargar(), cargarCategoriasDisponibles()])
+})
 </script>

@@ -5,6 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from database import Base, engine
 from core.db_migrations import asegurar_columnas_catalogo
 import os
+from pathlib import Path
 
 from routers import productos, ventas, alertas, reportes, devoluciones, movimientos, caja, sistema, configuracion
 import models.caja  # noqa: F401 (Necesario para que SQLAlchemy registre las tablas)
@@ -84,12 +85,15 @@ app.include_router(configuracion.router, prefix="/configuracion", tags=["Configu
 
 # ✅ Servir el Frontend Construido (Producción)
 frontend_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "Front", "dist")
+uploads_path = Path(__file__).resolve().parent / "uploads"
+uploads_path.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(uploads_path)), name="uploads")
 
 # Prefijos de API que NO deben ser interceptados por el catch-all de la SPA
 API_PREFIXES = {
     "productos", "ventas", "devoluciones", "alertas",
     "reportes", "movimientos", "caja", "sistema",
-    "configuracion", "health", "docs", "openapi.json", "redoc"
+    "configuracion", "health", "docs", "openapi.json", "redoc", "uploads"
 }
 
 if os.path.isdir(frontend_path):
