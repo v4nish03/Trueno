@@ -1,0 +1,13 @@
+{
+  "tienda": {
+    "nombre": "TRUENO MOTORS",
+    "sucursal": "Uyuni - Bolivia",
+    "telefono": "+591 00000000",
+    "direccion": "Av. Principal #123",
+    "mensaje": "Repuestos y accesorios de confianza"
+  },
+  "pdf": {
+    "titulo": "Catalogo de Productos",
+    "moneda": "Bs"
+  }
+}

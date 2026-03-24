@@ -6,6 +6,10 @@ export const productos = {
     subirImagen: (formData) => client.post('/productos/upload-imagen', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
     }),
+    descargarCatalogoPdf: (params = {}) => client.get('/productos/catalogo-pdf', {
+        params,
+        responseType: 'blob',
+    }),
     obtener: (id) => client.get(`/productos/${id}`),
     obtenerPorCodigo: (codigo) => client.get(`/productos/codigo/${codigo}`),
     crear: (data) => client.post('/productos/', data),

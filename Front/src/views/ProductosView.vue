@@ -157,6 +157,7 @@
               <datalist id="categorias-list">
                 <option v-for="cat in categoriasDisponibles" :key="cat" :value="cat"></option>
               </datalist>
+              <small style="color: var(--color-muted); font-size: 11px">Puedes elegir una categoría existente o escribir una nueva.</small>
             </div>
             <div class="form-group">
               <label class="form-label">URL de Imagen</label>

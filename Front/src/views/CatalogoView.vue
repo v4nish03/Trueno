@@ -5,7 +5,9 @@
         <h1 class="page-title">🖼️ Catálogo de Productos</h1>
         <p class="page-subtitle">Genera catálogo general o por categorías seleccionadas.</p>
       </div>
-      <button class="btn btn-primary" @click="generarPdf">📄 Generar PDF</button>
+      <button class="btn btn-primary" @click="generarPdf" :disabled="generandoPdf">
+        {{ generandoPdf ? 'Generando...' : '📄 Generar PDF' }}
+      </button>
     </div>
 
     <div class="card filtros-catalogo no-print">
@@ -87,6 +89,7 @@ const busquedaCategoria = ref('')
 const soloConImagen = ref(false)
 const productos = ref([])
 const cargando = ref(true)
+const generandoPdf = ref(false)
 
 const categoriasFiltradas = computed(() => {
   const q = busquedaCategoria.value.trim().toLowerCase()
@@ -161,8 +164,31 @@ async function limpiarSeleccion() {
   await cargarProductos()
 }
 
-function generarPdf() {
-  window.print()
+async function generarPdf() {
+  generandoPdf.value = true
+  try {
+    const params = {
+      solo_activos: true,
+      solo_con_imagen: soloConImagen.value,
+    }
+    if (categoriasSeleccionadas.value.length > 0) {
+      params.categorias = categoriasSeleccionadas.value
+    }
+
+    const res = await productosApi.descargarCatalogoPdf(params)
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'catalogo_productos.pdf'
+    a.click()
+    window.URL.revokeObjectURL(url)
+  } catch (error) {
+    console.error('No se pudo generar el PDF', error)
+    alert('No se pudo generar el PDF del catálogo')
+  } finally {
+    generandoPdf.value = false
+  }
 }
 
 onMounted(async () => {

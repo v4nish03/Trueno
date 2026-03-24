@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Request
 from sqlalchemy.orm import Session
 from database import get_db
 from schemas.producto import ProductoCreate, ProductoUpdate, ProductoResponse
@@ -6,6 +6,8 @@ from services import producto_service
 from typing import List, Optional
 from pathlib import Path
 from uuid import uuid4
+from fastapi.responses import Response
+from services.catalogo_pdf_service import generar_catalogo_pdf
 
 router = APIRouter()
 UPLOADS_DIR = Path(__file__).resolve().parent.parent / "uploads" / "productos"
@@ -80,6 +82,61 @@ async def upload_imagen_producto(
         "mensaje": "Imagen subida correctamente",
         "url": f"/uploads/productos/{nombre_archivo}"
     }
+
+
+@router.get("/catalogo-pdf")
+def descargar_catalogo_pdf(
+    request: Request,
+    categorias: Optional[List[str]] = Query(None, description="Categorías a incluir. Repetir parámetro para múltiples."),
+    solo_activos: bool = True,
+    solo_con_imagen: bool = False,
+    db: Session = Depends(get_db),
+):
+    """
+    Genera un PDF real del catálogo (no captura de pantalla):
+    portada + productos segmentados por categoría.
+    """
+    categorias_query = (categorias or []) + request.query_params.getlist("categorias[]")
+    categorias_limpias = [c.strip() for c in categorias_query if c and c.strip()]
+
+    productos_por_categoria = {}
+
+    if not categorias_limpias:
+        productos = producto_service.listar_productos(
+            db,
+            skip=0,
+            limit=2000,
+            buscar=None,
+            solo_activos=solo_activos,
+            categoria=None,
+            solo_con_imagen=solo_con_imagen,
+        )
+        for p in productos:
+            categoria = p.categoria or "General"
+            productos_por_categoria.setdefault(categoria, []).append(p)
+    else:
+        for categoria in categorias_limpias:
+            productos = producto_service.listar_productos(
+                db,
+                skip=0,
+                limit=2000,
+                buscar=None,
+                solo_activos=solo_activos,
+                categoria=categoria,
+                solo_con_imagen=solo_con_imagen,
+            )
+            productos_por_categoria[categoria] = productos
+
+    if not productos_por_categoria:
+        raise HTTPException(status_code=404, detail="No hay productos para generar el catálogo")
+
+    pdf_bytes = generar_catalogo_pdf(productos_por_categoria, categorias_limpias)
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": 'attachment; filename="catalogo_productos.pdf"'},
+    )
 
 
 @router.get("/codigo/{codigo}", response_model=ProductoResponse)
