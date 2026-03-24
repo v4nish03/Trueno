@@ -14,6 +14,16 @@ def _truncate(value: str, max_chars: int) -> str:
     return value if len(value) <= max_chars else value[: max_chars - 1] + "…"
 
 
+def _hex_to_rgb01(color_hex: str) -> tuple[float, float, float]:
+    value = color_hex.lstrip("#")
+    if len(value) != 6:
+        return (0, 0, 0)
+    r = int(value[0:2], 16) / 255
+    g = int(value[2:4], 16) / 255
+    b = int(value[4:6], 16) / 255
+    return (r, g, b)
+
+
 def _parse_jpeg_size(data: bytes) -> tuple[int, int] | None:
     if len(data) < 4 or data[0] != 0xFF or data[1] != 0xD8:
         return None
@@ -73,8 +83,6 @@ def _resolve_local_image(imagen_url: str | None) -> tuple[bytes, int, int] | Non
     if path.is_absolute():
         return _load_jpeg(path)
 
-    # rutas relativas al root del repo (ej: Front/assets/img/logo.jpeg)
-    repo_root = Path(__file__).resolve().parent.parent.parent
     return _load_jpeg(repo_root / path)
 
 
@@ -94,16 +102,31 @@ class StyledPdfBuilder:
             self.pages.append(self.current)
         self.current = PdfPage()
 
-    def text(self, x: float, y: float, text: str, size: int = 11, bold: bool = False):
+    def set_fill_color(self, color: tuple[float, float, float]):
+        r, g, b = color
+        self.current.commands.append(f"{r:.4f} {g:.4f} {b:.4f} rg")
+
+    def set_stroke_color(self, color: tuple[float, float, float]):
+        r, g, b = color
+        self.current.commands.append(f"{r:.4f} {g:.4f} {b:.4f} RG")
+
+    def text(self, x: float, y: float, text: str, size: int = 11, bold: bool = False, color: tuple[float, float, float] | None = None):
         font = "F2" if bold else "F1"
         safe = _escape_pdf_text(text)
-        self.current.commands.append(f"BT /{font} {size} Tf {x:.2f} {y:.2f} Td ({safe}) Tj ET")
+        prefix = ""
+        if color:
+            r, g, b = color
+            prefix = f"{r:.4f} {g:.4f} {b:.4f} rg\n"
+        self.current.commands.append(f"{prefix}BT /{font} {size} Tf {x:.2f} {y:.2f} Td ({safe}) Tj ET")
 
     def line(self, x1: float, y1: float, x2: float, y2: float):
         self.current.commands.append(f"{x1:.2f} {y1:.2f} m {x2:.2f} {y2:.2f} l S")
 
     def rect(self, x: float, y: float, w: float, h: float):
         self.current.commands.append(f"{x:.2f} {y:.2f} {w:.2f} {h:.2f} re S")
+
+    def rect_fill(self, x: float, y: float, w: float, h: float):
+        self.current.commands.append(f"{x:.2f} {y:.2f} {w:.2f} {h:.2f} re f")
 
     def image_jpeg(self, x: float, y: float, w: float, h: float, data: bytes, iw: int, ih: int):
         name = f"Im{len(self.current.images) + 1}"
@@ -114,14 +137,12 @@ class StyledPdfBuilder:
         if self.current.commands or self.current.images:
             self.pages.append(self.current)
 
-        objects: list[str] = []
-        objects.append("<< /Type /Catalog /Pages 2 0 R >>")  # 1
+        objects: list[str] = ["<< /Type /Catalog /Pages 2 0 R >>"]
 
         page_count = len(self.pages)
         page_obj_start = 3
         content_obj_start = page_obj_start + page_count
 
-        # Pre-calc image object ranges per page
         image_obj_start = content_obj_start + page_count
         image_obj_cursor = image_obj_start
         page_image_refs: list[dict[str, int]] = []
@@ -146,34 +167,28 @@ class StyledPdfBuilder:
                 xobj_parts = [f"/{k} {v} 0 R" for k, v in page_image_refs[i].items()]
                 xobjects = f" /XObject << {' '.join(xobj_parts)} >>"
 
-            page_obj = (
+            objects.append(
                 "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
                 f"/Contents {content_obj_num} 0 R "
                 f"/Resources << /Font << /F1 {font_f1_obj} 0 R /F2 {font_f2_obj} 0 R >>{xobjects} >> >>"
             )
-            objects.append(page_obj)
 
-        objects.insert(1, f"<< /Type /Pages /Count {page_count} /Kids [{' '.join(kids)}] >>")  # 2
+        objects.insert(1, f"<< /Type /Pages /Count {page_count} /Kids [{' '.join(kids)}] >>")
 
-        # content streams
         for page in self.pages:
             content = "\n".join(page.commands)
             data = content.encode("latin-1", errors="replace")
             objects.append(f"<< /Length {len(data)} >>\nstream\n{content}\nendstream")
 
-        # image streams (jpeg only)
-        for i, page in enumerate(self.pages):
-            for name, (img_data, iw, ih) in page.images.items():
-                _ = name
+        for page in self.pages:
+            for _name, (img_data, iw, ih) in page.images.items():
                 stream_text = img_data.decode("latin-1")
-                obj = (
+                objects.append(
                     f"<< /Type /XObject /Subtype /Image /Width {iw} /Height {ih} "
                     "/ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode "
                     f"/Length {len(img_data)} >>\nstream\n{stream_text}\nendstream"
                 )
-                objects.append(obj)
 
-        # fonts
         objects.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>")
         objects.append("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>")
 
@@ -188,9 +203,7 @@ class StyledPdfBuilder:
         out.append("0000000000 65535 f \n")
         for idx in range(1, len(objects) + 1):
             out.append(f"{offsets[idx]:010d} 00000 n \n")
-        out.append(
-            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF"
-        )
+        out.append(f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_pos}\n%%EOF")
         return "".join(out).encode("latin-1", errors="replace")
 
 
@@ -204,42 +217,53 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
     cfg = cargar_config_catalogo_pdf()
     tienda = cfg.get("tienda", {})
     pdf_cfg = cfg.get("pdf", {})
-    moneda = pdf_cfg.get("moneda", "Bs")
+    pal = cfg.get("colores", {})
 
+    c_bg = _hex_to_rgb01(pal.get("bg", "#080c09"))
+    c_surface = _hex_to_rgb01(pal.get("surface", "#0d1a0f"))
+    c_surface2 = _hex_to_rgb01(pal.get("surface2", "#122115"))
+    c_border = _hex_to_rgb01(pal.get("border", "#1c3d22"))
+    c_accent = _hex_to_rgb01(pal.get("accent", "#2ecc40"))
+    c_text = _hex_to_rgb01(pal.get("text", "#f0f4f0"))
+    c_muted = _hex_to_rgb01(pal.get("muted", "#7da882"))
+
+    moneda = pdf_cfg.get("moneda", "Bs")
     pdf = StyledPdfBuilder()
     pdf.new_page()
 
-    # Portada
-    y = 790
-    pdf.text(50, y, pdf_cfg.get("titulo", "Catalogo de Productos"), size=22, bold=True)
-    y -= 35
+    # Fondo portada
+    pdf.set_fill_color(c_bg)
+    pdf.rect_fill(0, 0, 595, 842)
 
-    logo_path = cfg.get("tienda", {}).get("logo_path", "Front/assets/img/logo.jpeg")
+    # Barra superior
+    pdf.set_fill_color(c_surface)
+    pdf.rect_fill(0, 780, 595, 62)
+    pdf.text(40, 806, pdf_cfg.get("titulo", "Catalogo de Productos"), size=20, bold=True, color=c_text)
+
+    logo_path = tienda.get("logo_path", "Front/assets/img/logo.jpeg")
     logo = _resolve_local_image(str(logo_path))
     if logo:
         data, iw, ih = logo
-        pdf.image_jpeg(430, 700, 120, 90, data, iw, ih)
+        pdf.image_jpeg(450, 785, 110, 48, data, iw, ih)
 
-    pdf.text(50, y, f"Tienda: {tienda.get('nombre', '-')}", size=13, bold=True)
+    y = 740
+    pdf.text(40, y, f"Tienda: {tienda.get('nombre', '-')}", size=13, bold=True, color=c_accent)
     y -= 20
-    pdf.text(50, y, f"Sucursal: {tienda.get('sucursal', '-')}", size=11)
+    pdf.text(40, y, f"Sucursal: {tienda.get('sucursal', '-')}", color=c_text)
     y -= 16
-    pdf.text(50, y, f"Telefono: {tienda.get('telefono', '-')}", size=11)
+    pdf.text(40, y, f"Telefono: {tienda.get('telefono', '-')}", color=c_text)
     y -= 16
-    pdf.text(50, y, f"Direccion: {tienda.get('direccion', '-')}", size=11)
+    pdf.text(40, y, f"Direccion: {tienda.get('direccion', '-')}", color=c_text)
     y -= 16
-    pdf.text(50, y, f"Mensaje: {tienda.get('mensaje', '-')}", size=11)
-    y -= 28
+    pdf.text(40, y, f"Mensaje: {tienda.get('mensaje', '-')}", color=c_muted)
 
     categorias_txt = ", ".join(categorias) if categorias else "General (todas)"
     total_productos = sum(len(items) for items in productos_por_categoria.values())
-    pdf.text(50, y, f"Categorias incluidas: {categorias_txt}", size=11)
-    y -= 18
-    pdf.text(50, y, f"Total productos: {total_productos}", size=11)
-    y -= 18
-    pdf.text(50, y, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", size=11)
+    pdf.text(40, 620, f"Categorias incluidas: {categorias_txt}", color=c_text)
+    pdf.text(40, 600, f"Total productos: {total_productos}", color=c_text)
+    pdf.text(40, 580, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", color=c_muted)
 
-    # Tarjetas 3 por fila, 4 secciones horizontales (nombre, precio, imagen, código)
+    # Tarjetas estilo UI
     card_w, card_h = 170, 220
     gap_x, gap_y = 12, 14
     start_x = 25
@@ -249,44 +273,69 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
         if not items:
             continue
 
-        pdf.new_page()
-        y_cursor = top_y
-        pdf.text(25, 805, f"Categoria: {categoria or 'General'}", size=16, bold=True)
-
-        col = 0
+        # imágenes primero, sin imagen al final
+        preparados = []
         for p in items:
+            img = _resolve_local_image(getattr(p, "imagen_url", None))
+            preparados.append((p, img))
+        preparados.sort(key=lambda x: 1 if x[1] is None else 0)
+
+        pdf.new_page()
+        pdf.set_fill_color(c_bg)
+        pdf.rect_fill(0, 0, 595, 842)
+
+        pdf.set_fill_color(c_surface)
+        pdf.rect_fill(0, 780, 595, 50)
+        pdf.text(25, 800, f"Categoria: {categoria or 'General'}", size=15, bold=True, color=c_accent)
+
+        y_cursor = top_y
+        col = 0
+
+        for p, imagen in preparados:
             x = start_x + col * (card_w + gap_x)
             y = y_cursor - card_h
 
-            # saltar de fila
             if y < 40:
                 pdf.new_page()
-                pdf.text(25, 805, f"Categoria: {categoria or 'General'} (continuacion)", size=13, bold=True)
+                pdf.set_fill_color(c_bg)
+                pdf.rect_fill(0, 0, 595, 842)
+                pdf.set_fill_color(c_surface)
+                pdf.rect_fill(0, 780, 595, 50)
+                pdf.text(25, 800, f"Categoria: {categoria or 'General'} (continuacion)", size=13, bold=True, color=c_accent)
                 y_cursor = top_y
                 col = 0
                 x = start_x
                 y = y_cursor - card_h
 
-            # borde y divisiones
+            # tarjeta tipo "card" web
+            pdf.set_fill_color(c_surface)
+            pdf.rect_fill(x, y, card_w, card_h)
+            pdf.set_stroke_color(c_border)
             pdf.rect(x, y, card_w, card_h)
+
             h_nombre, h_precio, h_img, h_codigo = 28, 22, 140, 30
             y_nombre = y + card_h - h_nombre
             y_precio = y_nombre - h_precio
             y_img = y_precio - h_img
 
+            pdf.set_fill_color(c_surface2)
+            pdf.rect_fill(x + 1, y_nombre, card_w - 2, h_nombre - 1)
+            pdf.rect_fill(x + 1, y_precio, card_w - 2, h_precio - 1)
+            pdf.rect_fill(x + 1, y, card_w - 2, h_codigo - 1)
+
+            pdf.set_stroke_color(c_border)
             pdf.line(x, y_nombre, x + card_w, y_nombre)
             pdf.line(x, y_precio, x + card_w, y_precio)
             pdf.line(x, y_img, x + card_w, y_img)
 
-            nombre = _truncate(getattr(p, "nombre", "-"), 30)
-            codigo = _truncate(getattr(p, "codigo", "-"), 24)
+            nombre = _truncate(getattr(p, "nombre", "-"), 28)
+            codigo = _truncate(getattr(p, "codigo", "-"), 22)
             precio = f"{float(getattr(p, 'precio1', 0.0)):.2f}"
 
-            pdf.text(x + 6, y + card_h - 18, nombre, size=10, bold=True)
-            pdf.text(x + 6, y_nombre - 15, f"Precio: {moneda} {precio}", size=10, bold=True)
-            pdf.text(x + 6, y + 12, f"Codigo: {codigo}", size=9)
+            pdf.text(x + 6, y + card_h - 18, nombre, size=10, bold=True, color=c_text)
+            pdf.text(x + 6, y_nombre - 15, f"Precio: {moneda} {precio}", size=10, bold=True, color=c_accent)
+            pdf.text(x + 6, y + 12, f"Codigo: {codigo}", size=9, color=c_muted)
 
-            imagen = _resolve_local_image(getattr(p, "imagen_url", None))
             if imagen:
                 data, iw, ih = imagen
                 target_w, target_h = card_w - 12, h_img - 12
@@ -297,7 +346,7 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
                 img_y = y_img + ((h_img - h) / 2)
                 pdf.image_jpeg(img_x, img_y, w, h, data, iw, ih)
             else:
-                pdf.text(x + 42, y_img + (h_img / 2), "Sin imagen", size=11)
+                pdf.text(x + 48, y_img + (h_img / 2), "Sin imagen", size=11, color=c_muted)
 
             col += 1
             if col == 3:
