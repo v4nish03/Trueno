@@ -14,6 +14,12 @@ def _truncate(value: str, max_chars: int) -> str:
     return value if len(value) <= max_chars else value[: max_chars - 1] + "…"
 
 
+def _center_x(text: str, font_size: int, page_width: int = 595) -> float:
+    # Aproximación simple para Helvetica
+    text_width = len(text) * (font_size * 0.52)
+    return max(20, (page_width - text_width) / 2)
+
+
 def _hex_to_rgb01(color_hex: str) -> tuple[float, float, float]:
     value = color_hex.lstrip("#")
     if len(value) != 6:
@@ -238,30 +244,42 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
     # Barra superior
     pdf.set_fill_color(c_surface)
     pdf.rect_fill(0, 780, 595, 62)
-    pdf.text(40, 806, pdf_cfg.get("titulo", "Catalogo de Productos"), size=20, bold=True, color=c_text)
+    titulo = pdf_cfg.get("titulo", "Catalogo de Productos")
+    pdf.text(_center_x(titulo, 20), 806, titulo, size=20, bold=True, color=c_text)
 
     logo_path = tienda.get("logo_path", "Front/assets/img/logo.jpeg")
     logo = _resolve_local_image(str(logo_path))
     if logo:
         data, iw, ih = logo
-        pdf.image_jpeg(450, 785, 110, 48, data, iw, ih)
+        logo_w = 180
+        logo_h = 120
+        logo_x = (595 - logo_w) / 2
+        logo_y = 600
+        pdf.image_jpeg(logo_x, logo_y, logo_w, logo_h, data, iw, ih)
 
-    y = 740
-    pdf.text(40, y, f"Tienda: {tienda.get('nombre', '-')}", size=13, bold=True, color=c_accent)
-    y -= 20
-    pdf.text(40, y, f"Sucursal: {tienda.get('sucursal', '-')}", color=c_text)
-    y -= 16
-    pdf.text(40, y, f"Telefono: {tienda.get('telefono', '-')}", color=c_text)
-    y -= 16
-    pdf.text(40, y, f"Direccion: {tienda.get('direccion', '-')}", color=c_text)
-    y -= 16
-    pdf.text(40, y, f"Mensaje: {tienda.get('mensaje', '-')}", color=c_muted)
+    # Panel inferior de datos
+    panel_x, panel_y, panel_w, panel_h = 70, 360, 455, 200
+    pdf.set_fill_color(c_surface)
+    pdf.rect_fill(panel_x, panel_y, panel_w, panel_h)
+    pdf.set_stroke_color(c_border)
+    pdf.rect(panel_x, panel_y, panel_w, panel_h)
+
+    y = panel_y + panel_h - 32
+    pdf.text(panel_x + 24, y, tienda.get('nombre', '-'), size=16, bold=True, color=c_accent)
+    y -= 24
+    pdf.text(panel_x + 24, y, f"Sucursal: {tienda.get('sucursal', '-')}", color=c_text)
+    y -= 18
+    pdf.text(panel_x + 24, y, f"Telefono: {tienda.get('telefono', '-')}", color=c_text)
+    y -= 18
+    pdf.text(panel_x + 24, y, f"Direccion: {tienda.get('direccion', '-')}", color=c_text)
+    y -= 18
+    pdf.text(panel_x + 24, y, f"{tienda.get('mensaje', '-')}", color=c_muted)
 
     categorias_txt = ", ".join(categorias) if categorias else "General (todas)"
     total_productos = sum(len(items) for items in productos_por_categoria.values())
-    pdf.text(40, 620, f"Categorias incluidas: {categorias_txt}", color=c_text)
-    pdf.text(40, 600, f"Total productos: {total_productos}", color=c_text)
-    pdf.text(40, 580, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", color=c_muted)
+    pdf.text(95, 330, f"Categorias incluidas: {categorias_txt}", color=c_text)
+    pdf.text(95, 312, f"Total productos: {total_productos}", color=c_text)
+    pdf.text(95, 294, f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}", color=c_muted)
 
     # Tarjetas estilo UI
     card_w, card_h = 170, 220
@@ -286,7 +304,8 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
 
         pdf.set_fill_color(c_surface)
         pdf.rect_fill(0, 780, 595, 50)
-        pdf.text(25, 800, f"Categoria: {categoria or 'General'}", size=15, bold=True, color=c_accent)
+        titulo_categoria = categoria or "General"
+        pdf.text(_center_x(titulo_categoria, 15), 800, titulo_categoria, size=15, bold=True, color=c_accent)
 
         y_cursor = top_y
         col = 0
@@ -301,7 +320,8 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
                 pdf.rect_fill(0, 0, 595, 842)
                 pdf.set_fill_color(c_surface)
                 pdf.rect_fill(0, 780, 595, 50)
-                pdf.text(25, 800, f"Categoria: {categoria or 'General'} (continuacion)", size=13, bold=True, color=c_accent)
+                titulo_cont = f"{titulo_categoria} · Continuacion"
+                pdf.text(_center_x(titulo_cont, 13), 800, titulo_cont, size=13, bold=True, color=c_accent)
                 y_cursor = top_y
                 col = 0
                 x = start_x
@@ -346,7 +366,9 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
                 img_y = y_img + ((h_img - h) / 2)
                 pdf.image_jpeg(img_x, img_y, w, h, data, iw, ih)
             else:
-                pdf.text(x + 48, y_img + (h_img / 2), "Sin imagen", size=11, color=c_muted)
+                # Placeholder visual limpio (sin texto)
+                pdf.set_fill_color(c_surface2)
+                pdf.rect_fill(x + 8, y_img + 8, card_w - 16, h_img - 16)
 
             col += 1
             if col == 3:
