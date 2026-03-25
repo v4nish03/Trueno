@@ -146,11 +146,8 @@
               <input v-model="modalForm.codigo" class="input" required />
             </div>
             <div class="form-group">
-              <label class="form-label">Ubicación</label>
-              <select v-model="modalForm.ubicacion" class="input">
-                <option value="tienda">Tienda</option>
-                <option value="bodega">Bodega</option>
-              </select>
+              <label class="form-label">Ubicación Operativa</label>
+              <input value="Tienda (la bodega se gestiona en su pestaña)" class="input" disabled />
             </div>
           </div>
           <div class="form-group">
