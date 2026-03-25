@@ -18,6 +18,7 @@ class MotivoMovimientoEnum(enum.Enum):
     devolucion = "devolucion"
     stock_inicial = "stock_inicial"
     correccion = "correccion"
+    traslado_bodega_tienda = "traslado_bodega_tienda"
 
 
 class MovimientoInventario(Base):

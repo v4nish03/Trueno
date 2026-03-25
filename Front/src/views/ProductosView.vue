@@ -47,7 +47,9 @@
           <tr>
             <th>Código</th>
             <th>Nombre</th>
+            <th>Categoría</th>
             <th>Stock</th>
+            <th>Bodega</th>
             <th>Precio 1</th>
             <th>P2 | P3 | P4</th>
             <th>Ubicación</th>
@@ -58,7 +60,7 @@
         </thead>
         <tbody>
           <tr v-if="productosFiltrados.length === 0">
-            <td colspan="9" class="empty-state">
+            <td colspan="11" class="empty-state">
               <div class="empty-state-icon">📦</div>
               <div class="empty-state-text">No hay productos</div>
             </td>
@@ -67,10 +69,16 @@
             <td><span class="badge badge-gray">{{ p.codigo }}</span></td>
             <td style="font-weight: 500; max-width: 200px;">{{ p.nombre }}</td>
             <td>
+              <span class="badge badge-gray">{{ p.categoria || 'General' }}</span>
+            </td>
+            <td>
               <div style="display:flex; align-items:center; gap:6px;">
                 <span :class="stockBadgeClass(p)">{{ stockEmoji(p) }} {{ p.stock }}</span>
                 <span style="font-size:10px; color:var(--color-muted)">/ {{ p.stock_minimo }}</span>
               </div>
+            </td>
+            <td>
+              <span class="badge badge-cyan">📦 {{ p.stock_bodega || 0 }}</span>
             </td>
             <td style="font-weight: 600; color: var(--color-success)">Bs {{ fmt(p.precio1) }}</td>
             <td style="color: var(--color-muted); font-size:11px">
@@ -95,6 +103,7 @@
                 <button class="btn btn-ghost btn-sm" title="Editar" @click="abrirEditar(p)"><Pencil :size="14" /></button>
                 <button class="btn btn-ghost btn-sm" title="Ingresar stock" @click="abrirIngreso(p)" style="color:var(--color-success)"><PackagePlus :size="14" /></button>
                 <button class="btn btn-ghost btn-sm" title="Ajustar stock" @click="abrirAjuste(p)" style="color:var(--color-warning)"><SlidersHorizontal :size="14" /></button>
+                <button class="btn btn-ghost btn-sm" title="Mover bodega a tienda" @click="abrirMoverBodega(p)" style="color:var(--color-accent)">⇄</button>
                 <button class="btn btn-ghost btn-sm" title="Historial" @click="abrirHistorial(p)"><ClipboardList :size="14" /></button>
                 <button
                   v-if="p.activo"
@@ -125,6 +134,12 @@
           <button class="btn btn-ghost btn-sm" @click="modalForm=null">✕</button>
         </div>
         <form @submit.prevent="guardarProducto">
+          <div style="display:flex; gap:8px; margin-bottom:12px;">
+            <button type="button" class="btn btn-ghost btn-sm" :style="tabForm==='general' ? 'border-color: var(--color-accent); color: var(--color-accent)' : ''" @click="tabForm='general'">General</button>
+            <button type="button" class="btn btn-ghost btn-sm" :style="tabForm==='bodega' ? 'border-color: var(--color-accent); color: var(--color-accent)' : ''" @click="tabForm='bodega'">Bodega</button>
+          </div>
+
+          <template v-if="tabForm==='general'">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label">Código *</label>
@@ -148,6 +163,29 @@
           </div>
           <div class="form-row">
             <div class="form-group">
+              <label class="form-label">Categoría</label>
+              <input v-model="modalForm.categoria" class="input" list="categorias-list" placeholder="Ej: Lubricantes" />
+              <datalist id="categorias-list">
+                <option v-for="cat in categoriasDisponibles" :key="cat" :value="cat"></option>
+              </datalist>
+              <small style="color: var(--color-muted); font-size: 11px">Puedes elegir una categoría existente o escribir una nueva.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL de Imagen</label>
+              <input v-model="modalForm.imagen_url" class="input" placeholder="https://..." />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subir imagen local</label>
+            <input type="file" accept="image/png,image/jpeg,image/webp" class="input" @change="subirImagenLocal" />
+            <small style="color: var(--color-muted); font-size: 11px">Se sube al servidor y se guarda su URL automáticamente.</small>
+          </div>
+          <div v-if="modalForm.imagen_url" class="form-group">
+            <label class="form-label">Vista previa</label>
+            <img :src="modalForm.imagen_url" alt="Vista previa" style="width:100%; max-width:220px; border-radius:8px; border:1px solid var(--color-border); object-fit:cover" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
               <label class="form-label">Precio 1 * (Bs)</label>
               <input v-model.number="modalForm.precio1" type="number" step="0.01" min="0.01" class="input" required />
             </div>
@@ -166,7 +204,7 @@
           </div>
           <div class="form-row">
             <div class="form-group" v-if="!modalForm.id">
-              <label class="form-label">Stock Inicial</label>
+              <label class="form-label">Stock Inicial Tienda</label>
               <input v-model.number="modalForm.stock_inicial" type="number" min="0" class="input" />
             </div>
             <div class="form-group">
@@ -174,6 +212,19 @@
               <input v-model.number="modalForm.stock_minimo" type="number" min="0" class="input" />
             </div>
           </div>
+          </template>
+
+          <template v-else>
+            <div class="form-group" v-if="modalForm.id">
+              <label class="form-label">Stock Actual Bodega</label>
+              <input v-model.number="modalForm.stock_bodega" type="number" min="0" class="input" />
+            </div>
+            <div class="form-group" v-else>
+              <label class="form-label">Stock Inicial Bodega</label>
+              <input v-model.number="modalForm.stock_bodega_inicial" type="number" min="0" class="input" />
+            </div>
+            <div style="font-size:12px; color:var(--color-muted)">Este tab permite cargar y editar stock de bodega en el mismo producto.</div>
+          </template>
 
           <div v-if="errorModal" class="alert alert-danger" style="margin-top:8px">{{ errorModal }}</div>
 
@@ -246,6 +297,31 @@
       </div>
     </div>
 
+    <!-- Modal Mover Bodega -> Tienda -->
+    <div v-if="modalMoverBodega" class="modal-backdrop" @click.self="modalMoverBodega=null">
+      <div class="modal">
+        <div class="modal-header">
+          <span class="modal-title">🏭 ➜ 🏪 Mover de Bodega a Tienda</span>
+          <button class="btn btn-ghost btn-sm" @click="modalMoverBodega=null">✕</button>
+        </div>
+        <p style="color:var(--color-muted); margin-bottom:16px; font-size:13px">
+          {{ modalMoverBodega.nombre }} · Bodega actual: <strong>{{ modalMoverBodega.stock_bodega || 0 }}</strong>
+        </p>
+        <div class="form-group">
+          <label class="form-label">Cantidad a trasladar</label>
+          <input v-model.number="moverBodegaForm.cantidad" type="number" min="1" class="input" autofocus />
+        </div>
+        <div v-if="errorModal" class="alert alert-danger">{{ errorModal }}</div>
+        <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px">
+          <button class="btn btn-secondary" @click="modalMoverBodega=null">Cancelar</button>
+          <button class="btn btn-primary" @click="confirmarMoverBodega" :disabled="guardando">
+            <div v-if="guardando" class="spinner" style="width:14px;height:14px"></div>
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal Historial -->
     <div v-if="modalHistorial" class="modal-backdrop" @click.self="modalHistorial=null">
       <div class="modal modal-lg">
@@ -298,10 +374,12 @@ const buscar = ref('')
 const filtroStock = ref('')
 const filtroEstado = ref('activos')
 const totalProductos = ref(0)
+const categoriasDisponibles = ref([])
 
 const modalForm = ref(null)
 const modalIngreso = ref(null)
 const modalAjuste = ref(null)
+const modalMoverBodega = ref(null)
 const modalHistorial = ref(null)
 const historialData = ref([])
 const historialCargando = ref(false)
@@ -309,6 +387,8 @@ const guardando = ref(false)
 const errorModal = ref('')
 const ingresoForm = ref({ cantidad: 1, motivo: 'compra' })
 const ajusteForm = ref({ nuevo_stock: 0 })
+const moverBodegaForm = ref({ cantidad: 1 })
+const tabForm = ref('general')
 
 const productosFiltrados = computed(() => {
   let result = lista.value
@@ -371,18 +451,48 @@ async function cargar() {
   }
 }
 
+async function cargarCategoriasDisponibles() {
+  try {
+    const res = await productosApi.categorias({ solo_activos: false })
+    categoriasDisponibles.value = res.data || []
+  } catch (e) {
+    categoriasDisponibles.value = []
+  }
+}
+
+async function subirImagenLocal(event) {
+  const archivo = event?.target?.files?.[0]
+  if (!archivo || !modalForm.value) return
+  guardando.value = true
+  errorModal.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    const res = await productosApi.subirImagen(formData)
+    modalForm.value.imagen_url = res.data?.url || ''
+  } catch (e) {
+    errorModal.value = e.response?.data?.detail || e.message
+  } finally {
+    guardando.value = false
+    event.target.value = ''
+  }
+}
+
 function filtrar() { /* reactivo por computed */ }
 
 function abrirCrear() {
   errorModal.value = ''
+  tabForm.value = 'general'
   modalForm.value = {
     codigo: '', nombre: '', descripcion: '',
+    categoria: '', imagen_url: '',
     precio1: '', precio2: null, precio3: null, precio4: null,
-    stock_inicial: 0, stock_minimo: 5, ubicacion: 'tienda'
+    stock_inicial: 0, stock_bodega_inicial: 0, stock_bodega: 0, stock_minimo: 5, ubicacion: 'tienda'
   }
 }
 function abrirEditar(p) {
   errorModal.value = ''
+  tabForm.value = 'general'
   modalForm.value = { ...p }
 }
 function abrirIngreso(p) {
@@ -394,6 +504,11 @@ function abrirAjuste(p) {
   errorModal.value = ''
   ajusteForm.value = { nuevo_stock: p.stock }
   modalAjuste.value = p
+}
+function abrirMoverBodega(p) {
+  errorModal.value = ''
+  moverBodegaForm.value = { cantidad: 1 }
+  modalMoverBodega.value = p
 }
 async function abrirHistorial(p) {
   modalHistorial.value = p
@@ -415,14 +530,46 @@ async function guardarProducto() {
   try {
     if (modalForm.value.id) {
       const { id, stock, activo, fecha_creacion, fecha_edicion, ventas_sin_stock, ...datos } = modalForm.value
+      datos.categoria = datos.categoria?.trim() || null
+      datos.imagen_url = datos.imagen_url?.trim() || null
       await productosApi.actualizar(id, datos)
     } else {
-      await productosApi.crear(modalForm.value)
+      const stockBodegaInicial = modalForm.value.ubicacion === 'bodega'
+        ? (modalForm.value.stock_bodega_inicial || modalForm.value.stock_inicial || 0)
+        : (modalForm.value.stock_bodega_inicial || 0)
+      const stockInicial = modalForm.value.ubicacion === 'tienda'
+        ? (modalForm.value.stock_inicial || 0)
+        : 0
+
+      const payload = {
+        ...modalForm.value,
+        stock_inicial: stockInicial,
+        stock_bodega_inicial: stockBodegaInicial,
+        categoria: modalForm.value.categoria?.trim() || null,
+        imagen_url: modalForm.value.imagen_url?.trim() || null,
+      }
+      await productosApi.crear(payload)
     }
     modalForm.value = null
     await cargar()
+    await cargarCategoriasDisponibles()
   } catch (e) {
     errorModal.value = e.message
+  } finally {
+    guardando.value = false
+  }
+}
+
+async function confirmarMoverBodega() {
+  if (!moverBodegaForm.value.cantidad || moverBodegaForm.value.cantidad < 1) return
+  guardando.value = true
+  errorModal.value = ''
+  try {
+    await productosApi.moverBodegaATienda(modalMoverBodega.value.id, moverBodegaForm.value.cantidad)
+    modalMoverBodega.value = null
+    await cargar()
+  } catch (e) {
+    errorModal.value = e.response?.data?.detail || e.message
   } finally {
     guardando.value = false
   }
@@ -476,5 +623,7 @@ async function reactivar(p) {
   }
 }
 
-onMounted(cargar)
+onMounted(async () => {
+  await Promise.all([cargar(), cargarCategoriasDisponibles()])
+})
 </script>

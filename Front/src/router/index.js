@@ -36,6 +36,12 @@ const routes = [
                 component: () => import('@/views/VentasView.vue'),
                 meta: { title: 'Historial de Ventas' }
             },
+            {
+                path: 'catalogo',
+                name: 'Catalogo',
+                component: () => import('@/views/CatalogoView.vue'),
+                meta: { title: 'Catálogo' }
+            },
         ]
     }
 ]

@@ -25,6 +25,7 @@ class Producto(Base):
     __tablename__ = "productos"
     __table_args__ = (
         CheckConstraint("stock >= 0", name="ck_producto_stock_non_negative"),
+        CheckConstraint("stock_bodega >= 0", name="ck_producto_stock_bodega_non_negative"),
         CheckConstraint("stock_minimo >= 0", name="ck_producto_stock_minimo_non_negative"),
         CheckConstraint("ventas_sin_stock >= 0", name="ck_producto_ventas_sin_stock_non_negative"),
         CheckConstraint("precio1 > 0", name="ck_producto_precio1_positive"),
@@ -35,6 +36,8 @@ class Producto(Base):
     codigo = Column(String(50), unique=True, nullable=False, index=True)
     nombre = Column(String(150), nullable=False)
     descripcion = Column(Text, nullable=True)
+    categoria = Column(String(80), nullable=True, index=True)
+    imagen_url = Column(Text, nullable=True)
 
     precio1 = Column(Float, nullable=False)
     precio2 = Column(Float, nullable=True)
@@ -42,6 +45,7 @@ class Producto(Base):
     precio4 = Column(Float, nullable=True)
 
     stock = Column(Integer, nullable=False, default=0)
+    stock_bodega = Column(Integer, nullable=False, default=0)
     stock_minimo = Column(Integer, nullable=False, default=5)
     ventas_sin_stock = Column(Integer, nullable=False, default=0)
 

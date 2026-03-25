@@ -8,11 +8,14 @@ class ProductoCreate(BaseModel):
     codigo: str = Field(..., min_length=1, max_length=50)
     nombre: str = Field(..., min_length=1, max_length=150)
     descripcion: Optional[str] = None
+    categoria: Optional[str] = Field(None, min_length=1, max_length=80)
+    imagen_url: Optional[str] = None
     precio1: float = Field(..., gt=0)
     precio2: Optional[float] = Field(None, gt=0)
     precio3: Optional[float] = Field(None, gt=0)
     precio4: Optional[float] = Field(None, gt=0)
     stock_inicial: int = Field(0, ge=0)
+    stock_bodega_inicial: int = Field(0, ge=0)
     stock_minimo: int = Field(5, ge=0)
     ubicacion: Optional[str] = "tienda"
 
@@ -21,11 +24,14 @@ class ProductoUpdate(BaseModel):
     codigo: Optional[str] = Field(None, min_length=1, max_length=50)
     nombre: Optional[str] = Field(None, min_length=1, max_length=150)
     descripcion: Optional[str] = None
+    categoria: Optional[str] = Field(None, min_length=1, max_length=80)
+    imagen_url: Optional[str] = None
     precio1: Optional[float] = Field(None, gt=0)
     precio2: Optional[float] = Field(None, gt=0)
     precio3: Optional[float] = Field(None, gt=0)
     precio4: Optional[float] = Field(None, gt=0)
     stock_minimo: Optional[int] = Field(None, ge=0)
+    stock_bodega: Optional[int] = Field(None, ge=0)
     ubicacion: Optional[str] = None
 
 
@@ -34,11 +40,14 @@ class ProductoResponse(BaseModel):
     codigo: str
     nombre: str
     descripcion: Optional[str]
+    categoria: Optional[str]
+    imagen_url: Optional[str]
     precio1: float
     precio2: Optional[float]
     precio3: Optional[float]
     precio4: Optional[float]
     stock: int
+    stock_bodega: int
     stock_minimo: int
     ventas_sin_stock: int
     ubicacion: str
@@ -55,11 +64,14 @@ class ProductoResponse(BaseModel):
             "codigo": obj.codigo,
             "nombre": obj.nombre,
             "descripcion": obj.descripcion,
+            "categoria": obj.categoria,
+            "imagen_url": obj.imagen_url,
             "precio1": obj.precio1,
             "precio2": obj.precio2,
             "precio3": obj.precio3,
             "precio4": obj.precio4,
             "stock": obj.stock,
+            "stock_bodega": obj.stock_bodega,
             "stock_minimo": obj.stock_minimo,
             "ventas_sin_stock": obj.ventas_sin_stock,
             "ubicacion": obj.ubicacion.value,
