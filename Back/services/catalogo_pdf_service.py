@@ -333,7 +333,13 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
             pdf.set_stroke_color(c_border)
             pdf.rect(x, y, card_w, card_h)
 
-            h_nombre, h_precio, h_img, h_codigo = 28, 22, 140, 30
+            tiene_imagen = imagen is not None
+            if tiene_imagen:
+                h_nombre, h_precio, h_img, h_codigo = 28, 22, 140, 30
+            else:
+                # Sin imagen: se compacta a 3 bloques (nombre, precio y datos)
+                h_nombre, h_precio, h_img, h_codigo = 36, 28, 0, 156
+
             y_nombre = y + card_h - h_nombre
             y_precio = y_nombre - h_precio
             y_img = y_precio - h_img
@@ -342,11 +348,16 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
             pdf.rect_fill(x + 1, y_nombre, card_w - 2, h_nombre - 1)
             pdf.rect_fill(x + 1, y_precio, card_w - 2, h_precio - 1)
             pdf.rect_fill(x + 1, y, card_w - 2, h_codigo - 1)
+            if not tiene_imagen:
+                # Panel central para destacar info cuando no hay foto
+                pdf.set_fill_color(c_surface)
+                pdf.rect_fill(x + 1, y + h_codigo, card_w - 2, card_h - h_nombre - h_precio - h_codigo)
 
             pdf.set_stroke_color(c_border)
             pdf.line(x, y_nombre, x + card_w, y_nombre)
             pdf.line(x, y_precio, x + card_w, y_precio)
-            pdf.line(x, y_img, x + card_w, y_img)
+            if tiene_imagen:
+                pdf.line(x, y_img, x + card_w, y_img)
 
             nombre = _truncate(getattr(p, "nombre", "-"), 28)
             codigo = _truncate(getattr(p, "codigo", "-"), 22)
@@ -366,9 +377,8 @@ def generar_catalogo_pdf(productos_por_categoria: dict[str, Iterable], categoria
                 img_y = y_img + ((h_img - h) / 2)
                 pdf.image_jpeg(img_x, img_y, w, h, data, iw, ih)
             else:
-                # Placeholder visual limpio (sin texto)
-                pdf.set_fill_color(c_surface2)
-                pdf.rect_fill(x + 8, y_img + 8, card_w - 16, h_img - 16)
+                # Sin imagen: tarjeta de 3 bloques, centramos código sin recuadro vacío
+                pdf.text(x + 18, y + (h_codigo / 2), f"Cod. {codigo}", size=12, bold=True, color=c_text)
 
             col += 1
             if col == 3:
