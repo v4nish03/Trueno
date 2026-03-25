@@ -46,6 +46,7 @@ import {
   LayoutDashboard,
   ShoppingCart,
   Package,
+  Images,
   BarChart3,
   DollarSign,
   AlertTriangle,
@@ -58,6 +59,7 @@ const navItems = computed(() => [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/pos',       icon: ShoppingCart,    label: 'Punto de Venta' },
   { to: '/productos', icon: Package,          label: 'Productos' },
+  { to: '/catalogo', icon: Images,            label: 'Catálogo' },
   { to: '/movimientos', icon: BarChart3,      label: 'Movimientos' },
   { to: '/ventas',    icon: DollarSign,       label: 'Ventas', badge: 0 },
 ])

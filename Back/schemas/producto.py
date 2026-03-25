@@ -8,6 +8,8 @@ class ProductoCreate(BaseModel):
     codigo: str = Field(..., min_length=1, max_length=50)
     nombre: str = Field(..., min_length=1, max_length=150)
     descripcion: Optional[str] = None
+    categoria: Optional[str] = Field(None, min_length=1, max_length=80)
+    imagen_url: Optional[str] = None
     precio1: float = Field(..., gt=0)
     precio2: Optional[float] = Field(None, gt=0)
     precio3: Optional[float] = Field(None, gt=0)
@@ -21,6 +23,8 @@ class ProductoUpdate(BaseModel):
     codigo: Optional[str] = Field(None, min_length=1, max_length=50)
     nombre: Optional[str] = Field(None, min_length=1, max_length=150)
     descripcion: Optional[str] = None
+    categoria: Optional[str] = Field(None, min_length=1, max_length=80)
+    imagen_url: Optional[str] = None
     precio1: Optional[float] = Field(None, gt=0)
     precio2: Optional[float] = Field(None, gt=0)
     precio3: Optional[float] = Field(None, gt=0)
@@ -34,6 +38,8 @@ class ProductoResponse(BaseModel):
     codigo: str
     nombre: str
     descripcion: Optional[str]
+    categoria: Optional[str]
+    imagen_url: Optional[str]
     precio1: float
     precio2: Optional[float]
     precio3: Optional[float]
@@ -55,6 +61,8 @@ class ProductoResponse(BaseModel):
             "codigo": obj.codigo,
             "nombre": obj.nombre,
             "descripcion": obj.descripcion,
+            "categoria": obj.categoria,
+            "imagen_url": obj.imagen_url,
             "precio1": obj.precio1,
             "precio2": obj.precio2,
             "precio3": obj.precio3,

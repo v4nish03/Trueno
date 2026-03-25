@@ -18,7 +18,9 @@ def crear_producto(
     stock_inicial: int = 0,
     stock_minimo: int = 5,
     ubicacion: str = "tienda",
-    descripcion: str | None = None
+    descripcion: str | None = None,
+    categoria: str | None = None,
+    imagen_url: str | None = None,
 ):
     # Validar que el código no exista
     existe = db.query(Producto).filter(Producto.codigo == codigo).first()
@@ -34,6 +36,8 @@ def crear_producto(
         codigo=codigo,
         nombre=nombre,
         descripcion=descripcion,
+        categoria=categoria,
+        imagen_url=imagen_url,
         precio1=precio1,
         precio2=precio2,
         precio3=precio3,
@@ -65,7 +69,9 @@ def listar_productos(
     skip: int = 0,
     limit: int = 100,
     buscar: Optional[str] = None,
-    solo_activos: bool = True
+    solo_activos: bool = True,
+    categoria: Optional[str] = None,
+    solo_con_imagen: bool = False,
 ):
     query = db.query(Producto)
 
@@ -80,7 +86,29 @@ def listar_productos(
             )
         )
 
+    if categoria:
+        query = query.filter(Producto.categoria.ilike(categoria.strip()))
+
+    if solo_con_imagen:
+        query = query.filter(
+            Producto.imagen_url.isnot(None),
+            Producto.imagen_url != ""
+        )
+
     return query.order_by(Producto.nombre).offset(skip).limit(limit).all()
+
+
+def listar_categorias(db: Session, solo_activos: bool = True):
+    query = db.query(Producto.categoria).filter(
+        Producto.categoria.isnot(None),
+        Producto.categoria != ""
+    )
+
+    if solo_activos:
+        query = query.filter(Producto.activo == True)
+
+    rows = query.distinct().order_by(Producto.categoria.asc()).all()
+    return [row[0] for row in rows]
 
 
 def obtener_producto(db: Session, producto_id: int):

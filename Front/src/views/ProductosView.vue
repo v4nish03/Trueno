@@ -47,6 +47,7 @@
           <tr>
             <th>Código</th>
             <th>Nombre</th>
+            <th>Categoría</th>
             <th>Stock</th>
             <th>Precio 1</th>
             <th>P2 | P3 | P4</th>
@@ -58,7 +59,7 @@
         </thead>
         <tbody>
           <tr v-if="productosFiltrados.length === 0">
-            <td colspan="9" class="empty-state">
+            <td colspan="10" class="empty-state">
               <div class="empty-state-icon">📦</div>
               <div class="empty-state-text">No hay productos</div>
             </td>
@@ -66,6 +67,9 @@
           <tr v-for="p in productosFiltrados" :key="p.id">
             <td><span class="badge badge-gray">{{ p.codigo }}</span></td>
             <td style="font-weight: 500; max-width: 200px;">{{ p.nombre }}</td>
+            <td>
+              <span class="badge badge-gray">{{ p.categoria || 'General' }}</span>
+            </td>
             <td>
               <div style="display:flex; align-items:center; gap:6px;">
                 <span :class="stockBadgeClass(p)">{{ stockEmoji(p) }} {{ p.stock }}</span>
@@ -145,6 +149,29 @@
           <div class="form-group">
             <label class="form-label">Descripción</label>
             <input v-model="modalForm.descripcion" class="input" />
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Categoría</label>
+              <input v-model="modalForm.categoria" class="input" list="categorias-list" placeholder="Ej: Lubricantes" />
+              <datalist id="categorias-list">
+                <option v-for="cat in categoriasDisponibles" :key="cat" :value="cat"></option>
+              </datalist>
+              <small style="color: var(--color-muted); font-size: 11px">Puedes elegir una categoría existente o escribir una nueva.</small>
+            </div>
+            <div class="form-group">
+              <label class="form-label">URL de Imagen</label>
+              <input v-model="modalForm.imagen_url" class="input" placeholder="https://..." />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subir imagen local</label>
+            <input type="file" accept="image/png,image/jpeg,image/webp" class="input" @change="subirImagenLocal" />
+            <small style="color: var(--color-muted); font-size: 11px">Se sube al servidor y se guarda su URL automáticamente.</small>
+          </div>
+          <div v-if="modalForm.imagen_url" class="form-group">
+            <label class="form-label">Vista previa</label>
+            <img :src="modalForm.imagen_url" alt="Vista previa" style="width:100%; max-width:220px; border-radius:8px; border:1px solid var(--color-border); object-fit:cover" />
           </div>
           <div class="form-row">
             <div class="form-group">
@@ -298,6 +325,7 @@ const buscar = ref('')
 const filtroStock = ref('')
 const filtroEstado = ref('activos')
 const totalProductos = ref(0)
+const categoriasDisponibles = ref([])
 
 const modalForm = ref(null)
 const modalIngreso = ref(null)
@@ -371,12 +399,40 @@ async function cargar() {
   }
 }
 
+async function cargarCategoriasDisponibles() {
+  try {
+    const res = await productosApi.categorias({ solo_activos: false })
+    categoriasDisponibles.value = res.data || []
+  } catch (e) {
+    categoriasDisponibles.value = []
+  }
+}
+
+async function subirImagenLocal(event) {
+  const archivo = event?.target?.files?.[0]
+  if (!archivo || !modalForm.value) return
+  guardando.value = true
+  errorModal.value = ''
+  try {
+    const formData = new FormData()
+    formData.append('archivo', archivo)
+    const res = await productosApi.subirImagen(formData)
+    modalForm.value.imagen_url = res.data?.url || ''
+  } catch (e) {
+    errorModal.value = e.response?.data?.detail || e.message
+  } finally {
+    guardando.value = false
+    event.target.value = ''
+  }
+}
+
 function filtrar() { /* reactivo por computed */ }
 
 function abrirCrear() {
   errorModal.value = ''
   modalForm.value = {
     codigo: '', nombre: '', descripcion: '',
+    categoria: '', imagen_url: '',
     precio1: '', precio2: null, precio3: null, precio4: null,
     stock_inicial: 0, stock_minimo: 5, ubicacion: 'tienda'
   }
@@ -415,12 +471,20 @@ async function guardarProducto() {
   try {
     if (modalForm.value.id) {
       const { id, stock, activo, fecha_creacion, fecha_edicion, ventas_sin_stock, ...datos } = modalForm.value
+      datos.categoria = datos.categoria?.trim() || null
+      datos.imagen_url = datos.imagen_url?.trim() || null
       await productosApi.actualizar(id, datos)
     } else {
-      await productosApi.crear(modalForm.value)
+      const payload = {
+        ...modalForm.value,
+        categoria: modalForm.value.categoria?.trim() || null,
+        imagen_url: modalForm.value.imagen_url?.trim() || null,
+      }
+      await productosApi.crear(payload)
     }
     modalForm.value = null
     await cargar()
+    await cargarCategoriasDisponibles()
   } catch (e) {
     errorModal.value = e.message
   } finally {
@@ -476,5 +540,7 @@ async function reactivar(p) {
   }
 }
 
-onMounted(cargar)
+onMounted(async () => {
+  await Promise.all([cargar(), cargarCategoriasDisponibles()])
+})
 </script>

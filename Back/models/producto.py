@@ -35,6 +35,8 @@ class Producto(Base):
     codigo = Column(String(50), unique=True, nullable=False, index=True)
     nombre = Column(String(150), nullable=False)
     descripcion = Column(Text, nullable=True)
+    categoria = Column(String(80), nullable=True, index=True)
+    imagen_url = Column(Text, nullable=True)
 
     precio1 = Column(Float, nullable=False)
     precio2 = Column(Float, nullable=True)

@@ -2,6 +2,14 @@ import client from './client'
 
 export const productos = {
     listar: (params = {}) => client.get('/productos/', { params }),
+    categorias: (params = {}) => client.get('/productos/categorias', { params }),
+    subirImagen: (formData) => client.post('/productos/upload-imagen', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+    }),
+    descargarCatalogoPdf: (params = {}) => client.get('/productos/catalogo-pdf', {
+        params,
+        responseType: 'blob',
+    }),
     obtener: (id) => client.get(`/productos/${id}`),
     obtenerPorCodigo: (codigo) => client.get(`/productos/codigo/${codigo}`),
     crear: (data) => client.post('/productos/', data),
