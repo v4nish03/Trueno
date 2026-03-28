@@ -230,7 +230,8 @@ def ingresar_stock_producto(
     db: Session,
     producto_id: int,
     cantidad: int,
-    motivo: str = "compra"
+    motivo: str = "compra",
+    ubicacion: str = "tienda",
 ):
     """
     Registra el ingreso de mercadería a un producto existente.
@@ -251,6 +252,7 @@ def ingresar_stock_producto(
         "compra": MotivoMovimientoEnum.compra,
         "devolucion": MotivoMovimientoEnum.devolucion,
         "correccion": MotivoMovimientoEnum.correccion,
+        "bodega_a_tienda": MotivoMovimientoEnum.traslado_bodega_tienda,
     }
 
     if motivo not in motivos_validos:
@@ -258,14 +260,47 @@ def ingresar_stock_producto(
 
     motivo_enum = motivos_validos[motivo]
 
-    stock_antes = producto.stock
+    if ubicacion not in {"tienda", "bodega"}:
+        raise Exception("Ubicación inválida. Usa 'tienda' o 'bodega'")
 
-    ingreso_stock(
-        db,
-        producto=producto,
-        cantidad=cantidad,
-        motivo=motivo_enum
-    )
+    stock_tienda_antes = producto.stock
+    stock_bodega_antes = producto.stock_bodega
+
+    if ubicacion == "tienda" and motivo == "bodega_a_tienda":
+        if producto.stock_bodega < cantidad:
+            raise Exception("Stock insuficiente en bodega para transferir")
+        producto.stock_bodega -= cantidad
+        producto.stock += cantidad
+        registrar_movimiento(
+            db,
+            producto_id=producto.id,
+            tipo=TipoMovimientoEnum.salida,
+            motivo=MotivoMovimientoEnum.traslado_bodega_tienda,
+            cantidad=cantidad,
+        )
+        registrar_movimiento(
+            db,
+            producto_id=producto.id,
+            tipo=TipoMovimientoEnum.ingreso,
+            motivo=MotivoMovimientoEnum.traslado_bodega_tienda,
+            cantidad=cantidad,
+        )
+    elif ubicacion == "tienda":
+        ingreso_stock(
+            db,
+            producto=producto,
+            cantidad=cantidad,
+            motivo=motivo_enum
+        )
+    else:
+        producto.stock_bodega += cantidad
+        registrar_movimiento(
+            db,
+            producto_id=producto.id,
+            tipo=TipoMovimientoEnum.ingreso,
+            motivo=motivo_enum,
+            cantidad=cantidad,
+        )
 
     db.commit()
     db.refresh(producto)
@@ -275,17 +310,23 @@ def ingresar_stock_producto(
         "producto_id": producto.id,
         "codigo": producto.codigo,
         "nombre": producto.nombre,
+        "ubicacion": ubicacion,
         "motivo": motivo,
         "cantidad_ingresada": cantidad,
-        "stock_anterior": stock_antes,
-        "stock_nuevo": producto.stock
+        "stock_anterior": stock_tienda_antes if ubicacion == "tienda" else stock_bodega_antes,
+        "stock_nuevo": producto.stock if ubicacion == "tienda" else producto.stock_bodega,
+        "stock_tienda_anterior": stock_tienda_antes,
+        "stock_tienda_nuevo": producto.stock,
+        "stock_bodega_anterior": stock_bodega_antes,
+        "stock_bodega_nuevo": producto.stock_bodega,
     }
 
 
 def ajustar_stock_manual(
     db: Session,
     producto_id: int,
-    nuevo_stock: int
+    nuevo_stock: int,
+    ubicacion: str = "tienda",
 ):
     """
     Ajuste manual de stock para correcciones de inventario físico.
@@ -298,15 +339,29 @@ def ajustar_stock_manual(
     if nuevo_stock < 0:
         raise Exception("El stock no puede ser negativo")
 
-    # ✅ CORREGIDO: guardar stock anterior ANTES de modificar
-    stock_anterior = producto.stock
+    if ubicacion not in {"tienda", "bodega"}:
+        raise Exception("Ubicación inválida. Usa 'tienda' o 'bodega'")
 
-    ajuste_stock(
-        db,
-        producto=producto,
-        cantidad=nuevo_stock,
-        motivo=MotivoMovimientoEnum.correccion
-    )
+    if ubicacion == "tienda":
+        stock_anterior = producto.stock
+        ajuste_stock(
+            db,
+            producto=producto,
+            cantidad=nuevo_stock,
+            motivo=MotivoMovimientoEnum.correccion
+        )
+    else:
+        stock_anterior = producto.stock_bodega
+        producto.stock_bodega = nuevo_stock
+        delta = abs(nuevo_stock - stock_anterior)
+        if delta > 0:
+            registrar_movimiento(
+                db,
+                producto_id=producto.id,
+                tipo=TipoMovimientoEnum.ajuste,
+                motivo=MotivoMovimientoEnum.correccion,
+                cantidad=delta,
+            )
 
     db.commit()
     db.refresh(producto)
@@ -316,8 +371,9 @@ def ajustar_stock_manual(
         "producto_id": producto.id,
         "codigo": producto.codigo,
         "nombre": producto.nombre,
+        "ubicacion": ubicacion,
         "stock_anterior": stock_anterior,
-        "stock_nuevo": producto.stock
+        "stock_nuevo": producto.stock if ubicacion == "tienda" else producto.stock_bodega
     }
 
 

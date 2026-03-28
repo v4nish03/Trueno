@@ -85,8 +85,8 @@
               {{ p.precio2 ? fmt(p.precio2) : '-' }} | {{ p.precio3 ? fmt(p.precio3) : '-' }} | {{ p.precio4 ? fmt(p.precio4) : '-' }}
             </td>
             <td>
-              <span class="badge" :class="p.ubicacion === 'tienda' ? 'badge-blue' : 'badge-cyan'">
-                {{ p.ubicacion === 'tienda' ? '🏪 Tienda' : '🏭 Bodega' }}
+              <span class="badge" :class="ubicacionVisual(p).className">
+                {{ ubicacionVisual(p).label }}
               </span>
             </td>
             <td>
@@ -256,6 +256,14 @@
             <option value="compra">Compra</option>
             <option value="devolucion">Devolución</option>
             <option value="correccion">Corrección</option>
+            <option v-if="ingresoForm.ubicacion === 'tienda'" value="bodega_a_tienda">Bodega ➜ Tienda</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ubicación destino</label>
+          <select v-model="ingresoForm.ubicacion" class="input" @change="ingresoForm.motivo === 'bodega_a_tienda' && ingresoForm.ubicacion === 'bodega' ? ingresoForm.motivo='compra' : null">
+            <option value="tienda">Tienda</option>
+            <option value="bodega">Bodega</option>
           </select>
         </div>
         <div v-if="errorModal" class="alert alert-danger">{{ errorModal }}</div>
@@ -282,6 +290,13 @@
         <div class="form-group">
           <label class="form-label">Nuevo stock real (inventario físico)</label>
           <input v-model.number="ajusteForm.nuevo_stock" type="number" min="0" class="input" autofocus />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ubicación a ajustar</label>
+          <select v-model="ajusteForm.ubicacion" class="input">
+            <option value="tienda">Tienda</option>
+            <option value="bodega">Bodega</option>
+          </select>
         </div>
         <div v-if="errorModal" class="alert alert-danger">{{ errorModal }}</div>
         <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:16px">
@@ -382,8 +397,8 @@ const historialData = ref([])
 const historialCargando = ref(false)
 const guardando = ref(false)
 const errorModal = ref('')
-const ingresoForm = ref({ cantidad: 1, motivo: 'compra' })
-const ajusteForm = ref({ nuevo_stock: 0 })
+const ingresoForm = ref({ cantidad: 1, motivo: 'compra', ubicacion: 'tienda' })
+const ajusteForm = ref({ nuevo_stock: 0, ubicacion: 'tienda' })
 const moverBodegaForm = ref({ cantidad: 1 })
 const tabForm = ref('general')
 
@@ -426,6 +441,13 @@ function tipoMovBadge(tipo) {
   if (tipo === 'ingreso') return 'badge badge-green'
   if (tipo === 'salida') return 'badge badge-red'
   return 'badge badge-yellow'
+}
+function ubicacionVisual(p) {
+  const hayTienda = Number(p.stock || 0) > 0
+  const hayBodega = Number(p.stock_bodega || 0) > 0
+  if (hayTienda && hayBodega) return { label: '🏪 + 🏭 Ambos', className: 'badge-green' }
+  if (hayBodega) return { label: '🏭 Bodega', className: 'badge-cyan' }
+  return { label: '🏪 Tienda', className: 'badge-blue' }
 }
 function fmt(n) {
   return Number(n || 0).toFixed(2)
@@ -494,12 +516,12 @@ function abrirEditar(p) {
 }
 function abrirIngreso(p) {
   errorModal.value = ''
-  ingresoForm.value = { cantidad: 1, motivo: 'compra' }
+  ingresoForm.value = { cantidad: 1, motivo: 'compra', ubicacion: 'tienda' }
   modalIngreso.value = p
 }
 function abrirAjuste(p) {
   errorModal.value = ''
-  ajusteForm.value = { nuevo_stock: p.stock }
+  ajusteForm.value = { nuevo_stock: p.stock, ubicacion: 'tienda' }
   modalAjuste.value = p
 }
 function abrirMoverBodega(p) {
@@ -577,7 +599,12 @@ async function confirmarIngreso() {
   guardando.value = true
   errorModal.value = ''
   try {
-    await productosApi.ingresarStock(modalIngreso.value.id, ingresoForm.value.cantidad, ingresoForm.value.motivo)
+    await productosApi.ingresarStock(
+      modalIngreso.value.id,
+      ingresoForm.value.cantidad,
+      ingresoForm.value.motivo,
+      ingresoForm.value.ubicacion
+    )
     modalIngreso.value = null
     await cargar()
   } catch (e) {
@@ -591,7 +618,11 @@ async function confirmarAjuste() {
   guardando.value = true
   errorModal.value = ''
   try {
-    await productosApi.ajustarStock(modalAjuste.value.id, ajusteForm.value.nuevo_stock)
+    await productosApi.ajustarStock(
+      modalAjuste.value.id,
+      ajusteForm.value.nuevo_stock,
+      ajusteForm.value.ubicacion
+    )
     modalAjuste.value = null
     await cargar()
   } catch (e) {

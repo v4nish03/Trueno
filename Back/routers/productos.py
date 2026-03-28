@@ -201,6 +201,7 @@ def ingresar_stock(
     producto_id: int,
     cantidad: int = Query(..., gt=0, description="Cantidad a ingresar"),
     motivo: str = Query("compra", description="Motivo: compra, devolucion, correccion"),
+    ubicacion: str = Query("tienda", description="Ubicación destino: tienda o bodega"),
     db: Session = Depends(get_db)
 ):
     """
@@ -208,7 +209,7 @@ def ingresar_stock(
     Úsalo cuando llegue nueva mercadería a la tienda.
     """
     try:
-        return producto_service.ingresar_stock_producto(db, producto_id, cantidad, motivo)
+        return producto_service.ingresar_stock_producto(db, producto_id, cantidad, motivo, ubicacion)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -217,6 +218,7 @@ def ingresar_stock(
 def ajustar_stock(
     producto_id: int,
     nuevo_stock: int = Query(..., ge=0, description="Nuevo valor de stock"),
+    ubicacion: str = Query("tienda", description="Ubicación a ajustar: tienda o bodega"),
     db: Session = Depends(get_db)
 ):
     """
@@ -224,7 +226,7 @@ def ajustar_stock(
     Registra el cambio como movimiento de corrección.
     """
     try:
-        return producto_service.ajustar_stock_manual(db, producto_id, nuevo_stock)
+        return producto_service.ajustar_stock_manual(db, producto_id, nuevo_stock, ubicacion)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

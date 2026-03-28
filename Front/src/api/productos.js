@@ -16,10 +16,10 @@ export const productos = {
     actualizar: (id, data) => client.put(`/productos/${id}`, data),
     descontinuar: (id) => client.delete(`/productos/${id}`),
     reactivar: (id) => client.post(`/productos/${id}/reactivar`),
-    ingresarStock: (id, cantidad, motivo = 'compra') =>
-        client.post(`/productos/${id}/ingresar-stock`, null, { params: { cantidad, motivo } }),
-    ajustarStock: (id, nuevo_stock) =>
-        client.post(`/productos/${id}/ajustar-stock`, null, { params: { nuevo_stock } }),
+    ingresarStock: (id, cantidad, motivo = 'compra', ubicacion = 'tienda') =>
+        client.post(`/productos/${id}/ingresar-stock`, null, { params: { cantidad, motivo, ubicacion } }),
+    ajustarStock: (id, nuevo_stock, ubicacion = 'tienda') =>
+        client.post(`/productos/${id}/ajustar-stock`, null, { params: { nuevo_stock, ubicacion } }),
     moverBodegaATienda: (id, cantidad) =>
         client.post(`/productos/${id}/mover-bodega-tienda`, null, { params: { cantidad } }),
     historial: (id) => client.get(`/productos/${id}/historial`),
